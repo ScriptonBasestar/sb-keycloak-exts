@@ -4,13 +4,13 @@ import org.keycloak.broker.oidc.AbstractOAuth2IdentityProvider
 import org.keycloak.broker.social.SocialIdentityProvider
 import org.keycloak.models.KeycloakSession
 
-class LineIdentityProvider (
+class LineIdentityProvider(
     keycloakSession: KeycloakSession,
-    config: LineIdentityProviderConfig,
+    config: LineIdentityProviderConfig
 ) : AbstractOAuth2IdentityProvider<LineIdentityProviderConfig>(
     keycloakSession,
-    config,
-), SocialIdentityProvider<LineIdentityProviderConfig> {
+    config
+),
+    SocialIdentityProvider<LineIdentityProviderConfig> {
     override fun getDefaultScopes(): String = LineConstant.defaultScope
-
 }

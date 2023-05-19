@@ -11,5 +11,4 @@ class KakaoIdentityProviderConfig : OAuth2IdentityProviderConfig {
     constructor(model: IdentityProviderModel) : super(model) {
         this.alias = KakaoConstant.providerId
     }
-
 }

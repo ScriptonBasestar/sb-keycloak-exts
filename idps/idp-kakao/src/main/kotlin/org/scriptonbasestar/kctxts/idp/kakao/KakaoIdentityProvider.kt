@@ -6,11 +6,11 @@ import org.keycloak.models.KeycloakSession
 
 class KakaoIdentityProvider(
     keycloakSession: KeycloakSession,
-    config: KakaoIdentityProviderConfig,
+    config: KakaoIdentityProviderConfig
 ) : AbstractOAuth2IdentityProvider<KakaoIdentityProviderConfig>(
     keycloakSession,
-    config,
-), SocialIdentityProvider<KakaoIdentityProviderConfig> {
+    config
+),
+    SocialIdentityProvider<KakaoIdentityProviderConfig> {
     override fun getDefaultScopes(): String = KakaoConstant.defaultScope
-
 }

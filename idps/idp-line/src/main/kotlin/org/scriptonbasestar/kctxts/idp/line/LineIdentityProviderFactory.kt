@@ -5,7 +5,8 @@ import org.keycloak.broker.social.SocialIdentityProviderFactory
 import org.keycloak.models.IdentityProviderModel
 import org.keycloak.models.KeycloakSession
 
-class LineIdentityProviderFactory : AbstractIdentityProviderFactory<LineIdentityProvider>(),
+class LineIdentityProviderFactory :
+    AbstractIdentityProviderFactory<LineIdentityProvider>(),
     SocialIdentityProviderFactory<LineIdentityProvider> {
     override fun create(session: KeycloakSession, model: IdentityProviderModel): LineIdentityProvider {
         return LineIdentityProvider(session, LineIdentityProviderConfig(model))

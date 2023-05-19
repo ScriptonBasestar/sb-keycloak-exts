@@ -10,5 +10,4 @@ class NaverIdentityProviderConfig : OAuth2IdentityProviderConfig {
     constructor(model: IdentityProviderModel) : super(model) {
         this.alias = NaverConstant.providerId
     }
-
 }

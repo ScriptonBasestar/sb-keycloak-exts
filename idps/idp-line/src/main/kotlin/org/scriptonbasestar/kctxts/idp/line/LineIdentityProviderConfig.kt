@@ -11,5 +11,4 @@ class LineIdentityProviderConfig : OAuth2IdentityProviderConfig {
     constructor(model: IdentityProviderModel) : super(model) {
         this.alias = LineConstant.providerId
     }
-
 }

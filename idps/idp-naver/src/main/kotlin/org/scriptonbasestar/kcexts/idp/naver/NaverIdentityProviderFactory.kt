@@ -5,7 +5,8 @@ import org.keycloak.broker.social.SocialIdentityProviderFactory
 import org.keycloak.models.IdentityProviderModel
 import org.keycloak.models.KeycloakSession
 
-class NaverIdentityProviderFactory : AbstractIdentityProviderFactory<NaverIdentityProvider>(),
+class NaverIdentityProviderFactory :
+    AbstractIdentityProviderFactory<NaverIdentityProvider>(),
     SocialIdentityProviderFactory<NaverIdentityProvider> {
     override fun create(session: KeycloakSession, model: IdentityProviderModel): NaverIdentityProvider {
         return NaverIdentityProvider(session, NaverIdentityProviderConfig(model))

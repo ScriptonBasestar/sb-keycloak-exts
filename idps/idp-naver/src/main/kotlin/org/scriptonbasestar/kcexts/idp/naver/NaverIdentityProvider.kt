@@ -12,11 +12,12 @@ import org.keycloak.models.KeycloakSession
 
 class NaverIdentityProvider(
     keycloakSession: KeycloakSession,
-    config: NaverIdentityProviderConfig,
+    config: NaverIdentityProviderConfig
 ) : AbstractOAuth2IdentityProvider<NaverIdentityProviderConfig>(
     keycloakSession,
-    config,
-), SocialIdentityProvider<NaverIdentityProviderConfig> {
+    config
+),
+    SocialIdentityProvider<NaverIdentityProviderConfig> {
 
     override fun supportsExternalExchange(): Boolean = true
 
