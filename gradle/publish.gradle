@@ -1,0 +1,20 @@
+apply plugin: 'maven-publish'
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+//                url = "https://maven.pkg.github.com/${{ github.repository_owner }}/${{ github.repository }}"
+            url = "https://maven.pkg.github.com/scriptonbasestar/sb-keycloak-exts"
+            credentials {
+                username = System.getenv("GITHUB_ACTOR") ?: project.properties["GITHUB_ACTOR"]
+                password = System.getenv("GITHUB_TOKEN") ?: project.properties["GITHUB_TOKEN"]
+            }
+        }
+    }
+    publications {
+        maven(MavenPublication) {
+            from components.kotlin
+        }
+    }
+}
