@@ -14,7 +14,7 @@ Identity Providers
 
 * naver
 * kakao
-* 
+*
 
 link
 * discord https://github.com/wadahiro/keycloak-discord
@@ -25,3 +25,7 @@ link
 https://www.keycloakify.dev/
 
 ### Events
+
+* kafka
+* mqtt https://github.com/softwarefactory-project/keycloak-event-listener-mqtt
+* rabbitmq https://github.com/aznamier/keycloak-event-listener-rabbitmq
