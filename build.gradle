@@ -21,7 +21,7 @@ allprojects {
     apply plugin: 'org.jlleitschuh.gradle.ktlint'
     apply plugin: 'org.jlleitschuh.gradle.ktlint-idea'
 
-    group = 'scriptonbasestar-keycloak-exts'
+    group = 'org.scriptonbasestar.keycloak.exts'
     version = '0.0.1-SNAPSHOT'
 
     repositories {
