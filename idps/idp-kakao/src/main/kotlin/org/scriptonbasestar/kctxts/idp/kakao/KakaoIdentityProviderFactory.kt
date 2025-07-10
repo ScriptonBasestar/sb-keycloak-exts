@@ -8,7 +8,10 @@ import org.keycloak.models.KeycloakSession
 class KakaoIdentityProviderFactory :
     AbstractIdentityProviderFactory<KakaoIdentityProvider>(),
     SocialIdentityProviderFactory<KakaoIdentityProvider> {
-    override fun create(session: KeycloakSession, model: IdentityProviderModel): KakaoIdentityProvider {
+    override fun create(
+        session: KeycloakSession,
+        model: IdentityProviderModel,
+    ): KakaoIdentityProvider {
         return KakaoIdentityProvider(session, KakaoIdentityProviderConfig(model))
     }
 

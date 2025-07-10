@@ -12,18 +12,20 @@ import org.keycloak.models.KeycloakSession
 
 class NaverIdentityProvider(
     keycloakSession: KeycloakSession,
-    config: NaverIdentityProviderConfig
+    config: NaverIdentityProviderConfig,
 ) : AbstractOAuth2IdentityProvider<NaverIdentityProviderConfig>(
-    keycloakSession,
-    config
-),
+        keycloakSession,
+        config,
+    ),
     SocialIdentityProvider<NaverIdentityProviderConfig> {
-
     override fun supportsExternalExchange(): Boolean = true
 
     override fun getProfileEndpointForValidation(event: EventBuilder): String = NaverConstant.profileUrl
 
-    override fun extractIdentityFromProfile(event: EventBuilder?, profile: JsonNode): BrokeredIdentityContext {
+    override fun extractIdentityFromProfile(
+        event: EventBuilder?,
+        profile: JsonNode,
+    ): BrokeredIdentityContext {
         val user = BrokeredIdentityContext(profile.get("response").get("id").asText())
 
         val email: String = profile.get("response").get("email").asText()
@@ -40,9 +42,10 @@ class NaverIdentityProvider(
 
     override fun doGetFederatedIdentity(accessToken: String): BrokeredIdentityContext {
         return try {
-            val profile = SimpleHttp.doGet(NaverConstant.profileUrl, session)
-                .param("access_token", accessToken)
-                .asJson()
+            val profile =
+                SimpleHttp.doGet(NaverConstant.profileUrl, session)
+                    .param("access_token", accessToken)
+                    .asJson()
             extractIdentityFromProfile(null, profile)
         } catch (e: Exception) {
             throw IdentityBrokerException("Could not obtain user profile from naver.", e)

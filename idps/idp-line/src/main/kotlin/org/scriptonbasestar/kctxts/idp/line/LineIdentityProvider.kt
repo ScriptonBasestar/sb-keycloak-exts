@@ -6,11 +6,11 @@ import org.keycloak.models.KeycloakSession
 
 class LineIdentityProvider(
     keycloakSession: KeycloakSession,
-    config: LineIdentityProviderConfig
+    config: LineIdentityProviderConfig,
 ) : AbstractOAuth2IdentityProvider<LineIdentityProviderConfig>(
-    keycloakSession,
-    config
-),
+        keycloakSession,
+        config,
+    ),
     SocialIdentityProvider<LineIdentityProviderConfig> {
     override fun getDefaultScopes(): String = LineConstant.defaultScope
 }

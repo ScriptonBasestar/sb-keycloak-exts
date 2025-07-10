@@ -8,7 +8,10 @@ import org.keycloak.models.KeycloakSession
 class LineIdentityProviderFactory :
     AbstractIdentityProviderFactory<LineIdentityProvider>(),
     SocialIdentityProviderFactory<LineIdentityProvider> {
-    override fun create(session: KeycloakSession, model: IdentityProviderModel): LineIdentityProvider {
+    override fun create(
+        session: KeycloakSession,
+        model: IdentityProviderModel,
+    ): LineIdentityProvider {
         return LineIdentityProvider(session, LineIdentityProviderConfig(model))
     }
 
