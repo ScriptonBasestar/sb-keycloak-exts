@@ -26,11 +26,9 @@ class NaverIdentityProvider(
         event: EventBuilder?,
         profile: JsonNode,
     ): BrokeredIdentityContext {
-        val user = BrokeredIdentityContext(profile.get("response").get("id").asText())
-
         val email: String = profile.get("response").get("email").asText()
+        val user = BrokeredIdentityContext(profile.get("response").get("id").asText(), config)
 
-        user.idpConfig = config.model // 변경된 부분
         user.username = email
         user.email = email
         // user.idp = this // 제거된 부분
