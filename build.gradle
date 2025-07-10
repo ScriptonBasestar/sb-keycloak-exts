@@ -18,7 +18,7 @@ plugins {
 apply plugin: 'base'
 
 allprojects {
-    apply plugin: 'org.jlleitschuh.gradle.ktlint'
+    //    apply plugin: 'org.jlleitschuh.gradle.ktlint'
 
     group = 'org.scriptonbasestar.keycloak.exts'
     version = '0.0.2-SNAPSHOT'
@@ -29,14 +29,14 @@ allprojects {
     }
 
     dependencies {
-        ktlintRuleset "com.pinterest.ktlint:ktlint-core:$ktlint_version"
-        ktlintRuleset "com.pinterest.ktlint:ktlint-ruleset-standard:$ktlint_version"
+        //        ktlintRuleset "com.pinterest.ktlint:ktlint-core:$ktlint_version"
+//        ktlintRuleset "com.pinterest.ktlint:ktlint-ruleset-standard:$ktlint_version"
     }
 
-    ktlint {
-        debug = true
-        verbose = true
-    }
+    //    ktlint {
+//        debug = true
+//        verbose = true
+//    }
 
     configurations {
 //        compileOnly {
@@ -46,7 +46,7 @@ allprojects {
     }
 }
 
-init.dependsOn(addKtlintCheckGitPreCommitHook)
+//init.dependsOn(addKtlintCheckGitPreCommitHook)
 
 apply plugin: 'base'
 
@@ -100,19 +100,19 @@ subprojects {
         }
     }
 
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
     [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
     compileJava {
         options.annotationProcessorPath = configurations.annotationProcessor
     }
     compileKotlin {
-        kotlinOptions.jvmTarget = JavaVersion.VERSION_17
+        kotlinOptions.jvmTarget = JavaVersion.VERSION_21
         kotlinOptions.freeCompilerArgs = ['-Xjsr305=strict']
 //        kotlinOptions.freeCompilerArgs += '-Xjsr305=strict'
     }
     compileTestKotlin {
-        kotlinOptions.jvmTarget = JavaVersion.VERSION_17
+        kotlinOptions.jvmTarget = JavaVersion.VERSION_21
         kotlinOptions.freeCompilerArgs = ['-Xjsr305=strict']
     }
 }

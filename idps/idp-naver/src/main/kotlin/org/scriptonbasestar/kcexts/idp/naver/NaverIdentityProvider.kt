@@ -30,10 +30,10 @@ class NaverIdentityProvider(
 
         val email: String = profile.get("response").get("email").asText()
 
-        user.idpConfig = config
+        user.idpConfig = config.model // 변경된 부분
         user.username = email
         user.email = email
-        user.idp = this
+        // user.idp = this // 제거된 부분
 
         AbstractJsonUserAttributeMapper.storeUserProfileForMapper(user, profile, config.alias)
 
