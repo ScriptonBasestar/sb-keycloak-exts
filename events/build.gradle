@@ -33,6 +33,7 @@ subprojects {
         testImplementation libs.bundles.testing
         testImplementation libs.bundles.keycloak
         testImplementation libs.bundles.jackson
+        testImplementation libs.testcontainers.kafka
         testImplementation 'org.jboss.logging:jboss-logging:3.5.0.Final'
     }
 

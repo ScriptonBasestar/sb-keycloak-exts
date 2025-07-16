@@ -1,0 +1,124 @@
+[versions]
+# JVM & Kotlin
+java = "21"
+kotlin = "2.2.0"
+kotlin-coroutines = "1.10.2"
+groovy = "4.0.27"
+
+# Keycloak
+keycloak = "26.3.1"
+
+# Build Tools
+gradle = "8.10"
+shadow = "8.1.1"
+asciidoctor = "4.0.4"
+protobuf = "0.9.5"
+nemerosa-versioning = "3.1.0"
+
+# Code Quality
+ktlint-plugin = "12.3.0"
+ktlint = "1.6.0"
+detekt = "1.23.7"
+
+# Testing
+junit = "5.11.4"
+assertj = "3.26.3"
+mockito = "5.14.2"
+mockito-kotlin = "5.4.0"
+testcontainers = "1.20.4"
+
+# Enterprise Features
+jackson = "2.18.2"
+logback = "1.5.12"
+micrometer = "1.14.2"
+prometheus = "0.16.0"
+slf4j = "2.0.16"
+
+# Database
+postgresql = "42.7.4"
+h2 = "2.3.232"
+hikari = "6.2.1"
+
+# Messaging
+kafka = "3.9.0"
+rabbitmq = "5.22.0"
+
+[libraries]
+# Kotlin
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
+kotlin-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlin-coroutines" }
+
+# Groovy
+groovy-core = { module = "org.apache.groovy:groovy", version.ref = "groovy" }
+groovy-json = { module = "org.apache.groovy:groovy-json", version.ref = "groovy" }
+
+# Keycloak
+keycloak-core = { module = "org.keycloak:keycloak-core", version.ref = "keycloak" }
+keycloak-common = { module = "org.keycloak:keycloak-common", version.ref = "keycloak" }
+keycloak-server-spi = { module = "org.keycloak:keycloak-server-spi", version.ref = "keycloak" }
+keycloak-server-spi-private = { module = "org.keycloak:keycloak-server-spi-private", version.ref = "keycloak" }
+keycloak-services = { module = "org.keycloak:keycloak-services", version.ref = "keycloak" }
+keycloak-model-jpa = { module = "org.keycloak:keycloak-model-jpa", version.ref = "keycloak" }
+
+# Testing
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
+testcontainers-core = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+
+# Enterprise Features
+jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+
+# Metrics and Monitoring
+micrometer-core = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
+micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
+prometheus-client = { module = "io.prometheus:simpleclient", version.ref = "prometheus" }
+prometheus-hotspot = { module = "io.prometheus:simpleclient_hotspot", version.ref = "prometheus" }
+prometheus-httpserver = { module = "io.prometheus:simpleclient_httpserver", version.ref = "prometheus" }
+
+# Database
+postgresql-driver = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+h2-database = { module = "com.h2database:h2", version.ref = "h2" }
+hikari-cp = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
+
+# Messaging
+kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
+rabbitmq-client = { module = "com.rabbitmq:amqp-client", version.ref = "rabbitmq" }
+
+[bundles]
+kotlin = ["kotlin-reflect", "kotlin-stdlib", "kotlin-test", "kotlin-coroutines-core"]
+groovy = ["groovy-core", "groovy-json"]
+keycloak = ["keycloak-core", "keycloak-common", "keycloak-server-spi", "keycloak-server-spi-private", "keycloak-services"]
+testing = ["junit-jupiter", "assertj-core", "mockito-core", "mockito-kotlin"]
+testcontainers = ["testcontainers-core", "testcontainers-junit", "testcontainers-kafka", "testcontainers-postgresql"]
+jackson = ["jackson-core", "jackson-databind", "jackson-kotlin"]
+logging = ["logback-classic", "slf4j-api"]
+metrics = ["micrometer-core", "micrometer-prometheus", "prometheus-client", "prometheus-hotspot"]
+database = ["postgresql-driver", "h2-database", "hikari-cp"]
+messaging = ["kafka-clients", "rabbitmq-client"]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
+kotlin-noarg = { id = "org.jetbrains.kotlin.plugin.noarg", version.ref = "kotlin" }
+kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
+asciidoctor = { id = "org.asciidoctor.jvm.convert", version.ref = "asciidoctor" }
+protobuf = { id = "com.google.protobuf", version.ref = "protobuf" }
+nemerosa-versioning = { id = "net.nemerosa.versioning", version.ref = "nemerosa-versioning" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

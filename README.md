@@ -6,13 +6,18 @@
 
 이 프로젝트는 한국의 주요 소셜 로그인 서비스들을 Keycloak과 통합할 수 있는 Identity Provider 확장을 제공합니다.
 
-This project provides Keycloak identity provider extensions for popular Korean social login services: Kakao, LINE, and Naver.
+This project provides Keycloak identity provider extensions for popular Korean social login services and international OAuth2 providers.
 
 ### 지원하는 소셜 로그인 (Supported Providers)
 
+#### 한국 소셜 로그인 서비스
 - **Kakao (카카오)** - 한국에서 가장 인기 있는 메시징 플랫폼
 - **LINE (라인)** - 한국과 일본에서 널리 사용되는 메시징 앱
 - **Naver (네이버)** - 한국의 대표적인 검색 엔진 및 웹 포털
+
+#### 글로벌 소셜 로그인 서비스
+- **Google** - 구글 계정으로 로그인 (OpenID Connect 지원)
+- **GitHub** - 깃허브 계정으로 로그인
 
 ## 주요 기능 (Features)
 
@@ -49,6 +54,8 @@ This project provides Keycloak identity provider extensions for popular Korean s
    - `idps/idp-kakao/build/libs/idp-kakao-*-all.jar`
    - `idps/idp-line/build/libs/idp-line-*-all.jar`
    - `idps/idp-naver/build/libs/idp-naver-*-all.jar`
+   - `idps/idp-google/build/libs/idp-google-*-all.jar`
+   - `idps/idp-github/build/libs/idp-github-*-all.jar`
 
 ### 설치
 
@@ -68,14 +75,21 @@ This project provides Keycloak identity provider extensions for popular Korean s
 
 각 소셜 플랫폼에서 애플리케이션을 생성해야 합니다:
 
+#### 한국 소셜 플랫폼
 - **Kakao**: [Kakao Developers Console](https://developers.kakao.com/)
 - **LINE**: [LINE Developers Console](https://developers.line.biz/console/)
 - **Naver**: [Naver Developers Console](https://developers.naver.com/apps/)
+
+#### 글로벌 소셜 플랫폼
+- **Google**: [Google Cloud Console](https://console.cloud.google.com/)
+- **GitHub**: [GitHub Developer Settings](https://github.com/settings/developers)
 
 자세한 설정 방법은 각 provider의 README를 참조하세요:
 - [Kakao 설정 가이드](idps/idp-kakao/README.md)
 - [LINE 설정 가이드](idps/idp-line/README.md)
 - [Naver 설정 가이드](idps/idp-naver/README.md)
+- [Google 설정 가이드](idps/idp-google/README.md)
+- [GitHub 설정 가이드](idps/idp-github/README.md)
 
 ### 2. Keycloak 관리 콘솔 설정
 
@@ -83,7 +97,7 @@ This project provides Keycloak identity provider extensions for popular Korean s
 2. Realm 선택
 3. **Identity Providers** 메뉴로 이동
 4. **Add provider** 드롭다운 클릭
-5. 원하는 provider 선택 (Kakao, LINE, 또는 Naver)
+5. 원하는 provider 선택 (Kakao, LINE, Naver, Google, 또는 GitHub)
 6. Provider 설정 입력
 
 ### 3. Redirect URI 설정
@@ -94,7 +108,7 @@ This project provides Keycloak identity provider extensions for popular Korean s
 https://your-keycloak-domain.com/realms/{realm}/broker/{provider}/endpoint
 ```
 
-`{provider}`는 `kakao`, `line`, 또는 `naver` 중 하나입니다.
+`{provider}`는 `kakao`, `line`, `naver`, `google`, 또는 `github` 중 하나입니다.
 
 ## 테스트 (Testing)
 
@@ -110,6 +124,8 @@ https://your-keycloak-domain.com/realms/{realm}/broker/{provider}/endpoint
 ./gradlew :idps:idp-kakao:test
 ./gradlew :idps:idp-line:test
 ./gradlew :idps:idp-naver:test
+./gradlew :idps:idp-google:test
+./gradlew :idps:idp-github:test
 ```
 
 ### 테스트 커버리지
@@ -142,11 +158,21 @@ sb-keycloak-exts/
     │   │   ├── main/      # 소스 코드
     │   │   └── test/      # 테스트 코드
     │   └── README.md      # LINE 설정 가이드
-    └── idp-naver/         # Naver provider
+    ├── idp-naver/         # Naver provider
+    │   ├── src/
+    │   │   ├── main/      # 소스 코드
+    │   │   └── test/      # 테스트 코드
+    │   └── README.md      # Naver 설정 가이드
+    ├── idp-google/        # Google provider
+    │   ├── src/
+    │   │   ├── main/      # 소스 코드
+    │   │   └── test/      # 테스트 코드
+    │   └── README.md      # Google 설정 가이드
+    └── idp-github/        # GitHub provider
         ├── src/
         │   ├── main/      # 소스 코드
         │   └── test/      # 테스트 코드
-        └── README.md      # Naver 설정 가이드
+        └── README.md      # GitHub 설정 가이드
 ```
 
 ## 문제 해결 (Troubleshooting)
@@ -170,7 +196,9 @@ sb-keycloak-exts/
    - 자동 테스트 및 배포
    - 다중 Java 버전 테스트 (17, 21)
 
-2. **추가 IDP 구현**
+2. **추가 IDP 구현** 🔄 진행중
+   - Google ✅ 완료
+   - GitHub ✅ 완료
    - Discord (https://github.com/wadahiro/keycloak-discord)
    - Apple (https://github.com/klausbetz/apple-identity-provider-keycloak)
    - 공통 코드 추출하여 중복 제거

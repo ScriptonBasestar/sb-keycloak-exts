@@ -7,7 +7,14 @@
       "Bash(rm:*)",
       "Bash(ls:*)",
       "Bash(./gradlew:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "mcp__shrimp__plan_task",
+      "mcp__shrimp__analyze_task",
+      "mcp__shrimp__reflect_task",
+      "mcp__shrimp__split_tasks",
+      "mcp__shrimp__execute_task",
+      "mcp__shrimp__verify_task",
+      "mcp__shrimp__list_tasks"
     ],
     "deny": []
   }

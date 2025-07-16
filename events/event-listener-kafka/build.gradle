@@ -1,0 +1,13 @@
+dependencies {
+    // Kafka Dependencies
+    bundleLib libs.kafka.clients
+    
+    // JSON Processing
+    bundleLib libs.bundles.jackson
+    bundleLib libs.bundles.logging
+    
+    // Test Dependencies
+    testImplementation libs.bundles.testing
+    testImplementation libs.testcontainers.kafka
+    testImplementation libs.testcontainers.junit
+}
