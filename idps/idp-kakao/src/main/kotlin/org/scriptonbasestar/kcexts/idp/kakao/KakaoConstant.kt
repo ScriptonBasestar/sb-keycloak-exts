@@ -1,4 +1,4 @@
-package org.scriptonbasestar.kctxts.idp.kakao
+package org.scriptonbasestar.kcexts.idp.kakao
 
 object KakaoConstant {
     // https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api

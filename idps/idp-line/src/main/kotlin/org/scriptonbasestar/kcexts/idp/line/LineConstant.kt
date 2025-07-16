@@ -1,4 +1,4 @@
-package org.scriptonbasestar.kctxts.idp.line
+package org.scriptonbasestar.kcexts.idp.line
 
 object LineConstant {
 //    https://developers.line.biz/en/reference/line-login/#userinfo
