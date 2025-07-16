@@ -1,3 +1,22 @@
+// Integration Test Configuration
+sourceSets {
+    integrationTest {
+        kotlin {
+            srcDir 'src/integrationTest/kotlin'
+        }
+        resources {
+            srcDir 'src/integrationTest/resources'
+        }
+        compileClasspath += main.output + test.output
+        runtimeClasspath += main.output + test.output
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
 dependencies {
     // Kafka Dependencies
     bundleLib libs.kafka.clients
@@ -10,4 +29,31 @@ dependencies {
     testImplementation libs.bundles.testing
     testImplementation libs.testcontainers.kafka
     testImplementation libs.testcontainers.junit
+    
+    // Integration Test Dependencies
+    integrationTestImplementation libs.bundles.testcontainers
+    integrationTestImplementation "org.keycloak:keycloak-admin-client:24.0.5"
 }
+
+// Integration Test Task
+task integrationTest(type: Test) {
+    description = 'Runs integration tests with TestContainers'
+    group = 'verification'
+    
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    
+    shouldRunAfter test
+    
+    useJUnitPlatform()
+    
+    systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
+    systemProperty 'testcontainers.reuse.enable', 'true'
+    
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+check.dependsOn integrationTest
