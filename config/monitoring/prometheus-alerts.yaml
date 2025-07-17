@@ -1,0 +1,303 @@
+# Prometheus Alert Rules for Keycloak Kafka Event Listener
+groups:
+  - name: keycloak-kafka-event-listener
+    rules:
+      # Critical Alerts
+      - alert: KeycloakKafkaCircuitBreakerOpen
+        expr: keycloak_kafka_circuit_breaker_state == 1
+        for: 0m
+        labels:
+          severity: critical
+          service: keycloak-kafka-event-listener
+          component: circuit-breaker
+        annotations:
+          summary: "Keycloak Kafka circuit breaker is open"
+          description: "Circuit breaker is open for {{ $labels.instance }}, indicating repeated failures in event processing"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#circuit-breaker-open"
+          dashboard_url: "{{ $externalURL }}/d/keycloak-kafka/keycloak-kafka-dashboard"
+
+      - alert: KeycloakKafkaHighErrorRate
+        expr: rate(keycloak_kafka_events_failed_total[5m]) / rate(keycloak_kafka_events_sent_total[5m]) * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+          service: keycloak-kafka-event-listener
+          component: event-processing
+        annotations:
+          summary: "High error rate in Keycloak Kafka event processing"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#high-error-rate"
+
+      - alert: KeycloakKafkaMemoryUsageHigh
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} * 100 > 90
+        for: 1m
+        labels:
+          severity: critical
+          service: keycloak-kafka-event-listener
+          component: jvm
+        annotations:
+          summary: "High memory usage in Keycloak Kafka service"
+          description: "Memory usage is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#high-memory-usage"
+
+      - alert: KeycloakKafkaServiceDown
+        expr: up{job="keycloak-kafka-event-listener"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: keycloak-kafka-event-listener
+          component: availability
+        annotations:
+          summary: "Keycloak Kafka service is down"
+          description: "Service instance {{ $labels.instance }} is not responding"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#service-down"
+
+      # High Priority Alerts
+      - alert: KeycloakKafkaConnectionFailures
+        expr: rate(keycloak_kafka_connection_failures_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: high
+          service: keycloak-kafka-event-listener
+          component: connectivity
+        annotations:
+          summary: "High rate of Kafka connection failures"
+          description: "Connection failure rate is {{ $value }} per second for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#connection-failures"
+
+      - alert: KeycloakKafkaHighLatency
+        expr: histogram_quantile(0.95, rate(keycloak_kafka_event_processing_duration_bucket[5m])) > 1000
+        for: 5m
+        labels:
+          severity: high
+          service: keycloak-kafka-event-listener
+          component: performance
+        annotations:
+          summary: "High latency in event processing"
+          description: "95th percentile latency is {{ $value }}ms for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#high-latency"
+
+      - alert: KeycloakKafkaVeryHighLatency
+        expr: histogram_quantile(0.99, rate(keycloak_kafka_event_processing_duration_bucket[5m])) > 5000
+        for: 2m
+        labels:
+          severity: high
+          service: keycloak-kafka-event-listener
+          component: performance
+        annotations:
+          summary: "Very high latency in event processing"
+          description: "99th percentile latency is {{ $value }}ms for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#very-high-latency"
+
+      # Medium Priority Alerts
+      - alert: KeycloakKafkaBackpressureActive
+        expr: keycloak_kafka_backpressure_active == 1
+        for: 2m
+        labels:
+          severity: medium
+          service: keycloak-kafka-event-listener
+          component: backpressure
+        annotations:
+          summary: "Backpressure is active"
+          description: "Backpressure mechanism is active for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#backpressure-active"
+
+      - alert: KeycloakKafkaModerateErrorRate
+        expr: rate(keycloak_kafka_events_failed_total[5m]) / rate(keycloak_kafka_events_sent_total[5m]) * 100 > 1
+        for: 10m
+        labels:
+          severity: medium
+          service: keycloak-kafka-event-listener
+          component: event-processing
+        annotations:
+          summary: "Moderate error rate in event processing"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#moderate-error-rate"
+
+      - alert: KeycloakKafkaElevatedMemoryUsage
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} * 100 > 80
+        for: 5m
+        labels:
+          severity: medium
+          service: keycloak-kafka-event-listener
+          component: jvm
+        annotations:
+          summary: "Elevated memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#elevated-memory-usage"
+
+      - alert: KeycloakKafkaHighCpuUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: medium
+          service: keycloak-kafka-event-listener
+          component: cpu
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#high-cpu-usage"
+
+      # Low Priority Alerts
+      - alert: KeycloakKafkaKafkaLag
+        expr: keycloak_kafka_consumer_lag > 1000
+        for: 10m
+        labels:
+          severity: low
+          service: keycloak-kafka-event-listener
+          component: kafka
+        annotations:
+          summary: "Kafka consumer lag is high"
+          description: "Consumer lag is {{ $value }} messages for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#kafka-lag"
+
+      - alert: KeycloakKafkaHighDiskUsage
+        expr: (node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: low
+          service: keycloak-kafka-event-listener
+          component: disk
+        annotations:
+          summary: "High disk usage"
+          description: "Disk usage is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#high-disk-usage"
+
+      - alert: KeycloakKafkaModerateLatency
+        expr: histogram_quantile(0.95, rate(keycloak_kafka_event_processing_duration_bucket[5m])) > 500
+        for: 10m
+        labels:
+          severity: low
+          service: keycloak-kafka-event-listener
+          component: performance
+        annotations:
+          summary: "Moderate latency in event processing"
+          description: "95th percentile latency is {{ $value }}ms for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#moderate-latency"
+
+      # Connection Pool Alerts
+      - alert: KeycloakKafkaConnectionPoolExhausted
+        expr: keycloak_kafka_connection_pool_active / keycloak_kafka_connection_pool_max * 100 > 90
+        for: 2m
+        labels:
+          severity: high
+          service: keycloak-kafka-event-listener
+          component: connection-pool
+        annotations:
+          summary: "Connection pool is nearly exhausted"
+          description: "Connection pool utilization is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#connection-pool-exhausted"
+
+      - alert: KeycloakKafkaConnectionPoolErrors
+        expr: rate(keycloak_kafka_connection_pool_errors_total[5m]) > 5
+        for: 3m
+        labels:
+          severity: medium
+          service: keycloak-kafka-event-listener
+          component: connection-pool
+        annotations:
+          summary: "High rate of connection pool errors"
+          description: "Connection pool error rate is {{ $value }} per second for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#connection-pool-errors"
+
+      # Garbage Collection Alerts
+      - alert: KeycloakKafkaGCTimeHigh
+        expr: rate(jvm_gc_collection_seconds_sum[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: medium
+          service: keycloak-kafka-event-listener
+          component: jvm
+        annotations:
+          summary: "High garbage collection time"
+          description: "GC time is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#high-gc-time"
+
+      # Security Alerts
+      - alert: KeycloakKafkaAuthenticationFailures
+        expr: rate(keycloak_kafka_authentication_failures_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: high
+          service: keycloak-kafka-event-listener
+          component: security
+        annotations:
+          summary: "High rate of authentication failures"
+          description: "Authentication failure rate is {{ $value }} per second for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#authentication-failures"
+
+      - alert: KeycloakKafkaSSLCertificateExpiring
+        expr: (keycloak_kafka_ssl_certificate_expiry_timestamp - time()) / 86400 < 30
+        for: 0m
+        labels:
+          severity: high
+          service: keycloak-kafka-event-listener
+          component: security
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate will expire in {{ $value }} days for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#ssl-certificate-expiring"
+
+      # Event Volume Alerts
+      - alert: KeycloakKafkaEventVolumeDropped
+        expr: rate(keycloak_kafka_events_sent_total[5m]) < 1
+        for: 15m
+        labels:
+          severity: medium
+          service: keycloak-kafka-event-listener
+          component: event-processing
+        annotations:
+          summary: "Event volume has dropped significantly"
+          description: "Event rate is {{ $value }} per second for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#event-volume-dropped"
+
+      - alert: KeycloakKafkaEventVolumeSpike
+        expr: rate(keycloak_kafka_events_sent_total[5m]) > 1000
+        for: 5m
+        labels:
+          severity: medium
+          service: keycloak-kafka-event-listener
+          component: event-processing
+        annotations:
+          summary: "Unusual spike in event volume"
+          description: "Event rate is {{ $value }} per second for {{ $labels.instance }}"
+          runbook_url: "https://docs.company.com/runbooks/keycloak-kafka#event-volume-spike"
+
+  # Recovery Rules (Alerts that auto-resolve)
+  - name: keycloak-kafka-recovery
+    rules:
+      - alert: KeycloakKafkaCircuitBreakerRecovered
+        expr: keycloak_kafka_circuit_breaker_state == 0 and keycloak_kafka_circuit_breaker_state offset 5m == 1
+        for: 1m
+        labels:
+          severity: info
+          service: keycloak-kafka-event-listener
+          component: circuit-breaker
+          alert_type: recovery
+        annotations:
+          summary: "Circuit breaker has recovered"
+          description: "Circuit breaker for {{ $labels.instance }} has returned to closed state"
+
+      - alert: KeycloakKafkaErrorRateRecovered
+        expr: rate(keycloak_kafka_events_failed_total[5m]) / rate(keycloak_kafka_events_sent_total[5m]) * 100 < 1 and rate(keycloak_kafka_events_failed_total[5m] offset 10m) / rate(keycloak_kafka_events_sent_total[5m] offset 10m) * 100 > 5
+        for: 2m
+        labels:
+          severity: info
+          service: keycloak-kafka-event-listener
+          component: event-processing
+          alert_type: recovery
+        annotations:
+          summary: "Error rate has recovered"
+          description: "Error rate for {{ $labels.instance }} has returned to normal levels"
+
+      - alert: KeycloakKafkaMemoryUsageRecovered
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} * 100 < 70 and jvm_memory_used_bytes{area="heap"} offset 10m / jvm_memory_max_bytes{area="heap"} offset 10m * 100 > 90
+        for: 2m
+        labels:
+          severity: info
+          service: keycloak-kafka-event-listener
+          component: jvm
+          alert_type: recovery
+        annotations:
+          summary: "Memory usage has recovered"
+          description: "Memory usage for {{ $labels.instance }} has returned to normal levels"

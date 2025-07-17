@@ -1,0 +1,332 @@
+# Keycloak Kafka Event Listener - Alert Rules Configuration
+# This file defines alert rules, thresholds, and notification channels
+
+alerting:
+  enabled: true
+  evaluation_interval: 30s
+  history_retention: 7d
+  thread_pool_size: 4
+
+# Notification Channels Configuration
+notification_channels:
+  # Email Configuration
+  email:
+    smtp_host: smtp.company.com
+    smtp_port: 587
+    use_auth: true
+    use_tls: true
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    from_address: alerts@company.com
+    from_name: "Keycloak Kafka Alerts"
+    to_addresses:
+      - platform-team@company.com
+      - ops-team@company.com
+    cc_addresses:
+      - engineering-leads@company.com
+    environment: ${ENVIRONMENT:production}
+
+  # Slack Configuration
+  slack:
+    webhook_url: ${SLACK_WEBHOOK_URL}
+    channel: "#platform-alerts"
+    bot_name: "Keycloak Kafka Alerts"
+    icon_emoji: ":warning:"
+    environment: ${ENVIRONMENT:production}
+    dashboard_url: ${GRAFANA_URL}/d/keycloak-kafka
+
+  # Webhook Configuration
+  webhook:
+    url: ${WEBHOOK_URL}
+    secret: ${WEBHOOK_SECRET}
+    headers:
+      X-Service: "keycloak-kafka-event-listener"
+      X-Environment: ${ENVIRONMENT:production}
+    authentication:
+      type: BEARER
+      token: ${WEBHOOK_TOKEN}
+    connection_timeout_seconds: 10
+    timeout_seconds: 30
+    environment: ${ENVIRONMENT:production}
+    team_name: "platform"
+    dashboard_url: ${GRAFANA_URL}/d/keycloak-kafka
+    runbook_url: "https://docs.company.com/runbooks/keycloak-kafka"
+
+  # PagerDuty Configuration
+  pagerduty:
+    integration_key: ${PAGERDUTY_INTEGRATION_KEY}
+    source: "keycloak-kafka-event-listener"
+    service_group: "authentication"
+    environment: ${ENVIRONMENT:production}
+    dashboard_url: ${GRAFANA_URL}/d/keycloak-kafka
+    runbook_url: "https://docs.company.com/runbooks/keycloak-kafka"
+    logs_url: ${LOGS_URL}
+
+# Alert Rules
+alert_rules:
+  # Critical Alerts
+  - name: "CircuitBreakerOpen"
+    description: "Circuit breaker is open, service is failing fast"
+    metric: CIRCUIT_BREAKER_OPEN
+    condition: EQUALS
+    threshold: 1.0
+    severity: CRITICAL
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: EMAIL
+      - type: SLACK
+      - type: PAGERDUTY
+      - type: WEBHOOK
+    escalation_levels:
+      - delay_minutes: 5
+        channels:
+          - type: PAGERDUTY
+      - delay_minutes: 15
+        channels:
+          - type: EMAIL
+          - type: SLACK
+
+  - name: "HighErrorRate"
+    description: "Event processing error rate is above acceptable threshold"
+    metric: ERROR_RATE
+    condition: GREATER_THAN
+    threshold: 5.0  # 5% error rate
+    severity: CRITICAL
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: EMAIL
+      - type: SLACK
+      - type: PAGERDUTY
+    escalation_levels:
+      - delay_minutes: 10
+        channels:
+          - type: PAGERDUTY
+
+  - name: "HighMemoryUsage"
+    description: "Memory usage is critically high"
+    metric: MEMORY_USAGE
+    condition: GREATER_THAN
+    threshold: 90.0  # 90% memory usage
+    severity: CRITICAL
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: EMAIL
+      - type: SLACK
+      - type: PAGERDUTY
+    escalation_levels:
+      - delay_minutes: 5
+        channels:
+          - type: PAGERDUTY
+
+  # High Priority Alerts
+  - name: "ConnectionFailures"
+    description: "High rate of Kafka connection failures"
+    metric: CONNECTION_FAILURES
+    condition: GREATER_THAN
+    threshold: 10.0  # 10% connection failure rate
+    severity: HIGH
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: EMAIL
+      - type: SLACK
+      - type: WEBHOOK
+    escalation_levels:
+      - delay_minutes: 15
+        channels:
+          - type: PAGERDUTY
+
+  - name: "HighLatency"
+    description: "Event processing latency P95 is too high"
+    metric: LATENCY_P95
+    condition: GREATER_THAN
+    threshold: 1000.0  # 1 second P95 latency
+    severity: HIGH
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: EMAIL
+      - type: SLACK
+    escalation_levels:
+      - delay_minutes: 20
+        channels:
+          - type: PAGERDUTY
+
+  - name: "VeryHighLatency"
+    description: "Event processing latency P99 is extremely high"
+    metric: LATENCY_P99
+    condition: GREATER_THAN
+    threshold: 5000.0  # 5 seconds P99 latency
+    severity: HIGH
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: EMAIL
+      - type: SLACK
+      - type: PAGERDUTY
+
+  # Medium Priority Alerts
+  - name: "BackpressureActive"
+    description: "Backpressure mechanism is active"
+    metric: BACKPRESSURE_ACTIVE
+    condition: EQUALS
+    threshold: 1.0
+    severity: MEDIUM
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: EMAIL
+      - type: SLACK
+    escalation_levels:
+      - delay_minutes: 30
+        channels:
+          - type: WEBHOOK
+
+  - name: "ModerateErrorRate"
+    description: "Event processing error rate is elevated"
+    metric: ERROR_RATE
+    condition: GREATER_THAN
+    threshold: 1.0  # 1% error rate
+    severity: MEDIUM
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: SLACK
+      - type: WEBHOOK
+
+  - name: "ElevatedMemoryUsage"
+    description: "Memory usage is elevated"
+    metric: MEMORY_USAGE
+    condition: GREATER_THAN
+    threshold: 80.0  # 80% memory usage
+    severity: MEDIUM
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: SLACK
+
+  - name: "HighCpuUsage"
+    description: "CPU usage is high"
+    metric: CPU_USAGE
+    condition: GREATER_THAN
+    threshold: 80.0  # 80% CPU usage
+    severity: MEDIUM
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: SLACK
+      - type: WEBHOOK
+
+  # Low Priority Alerts
+  - name: "KafkaLag"
+    description: "Kafka consumer lag is increasing"
+    metric: KAFKA_LAG
+    condition: GREATER_THAN
+    threshold: 1000.0  # 1000 messages lag
+    severity: LOW
+    enabled: true
+    notify_on_resolve: false
+    notification_channels:
+      - type: SLACK
+
+  - name: "HighDiskUsage"
+    description: "Disk usage is approaching capacity"
+    metric: DISK_USAGE
+    condition: GREATER_THAN
+    threshold: 85.0  # 85% disk usage
+    severity: LOW
+    enabled: true
+    notify_on_resolve: true
+    notification_channels:
+      - type: SLACK
+      - type: WEBHOOK
+
+  - name: "ModerateLatency"
+    description: "Event processing latency P95 is elevated"
+    metric: LATENCY_P95
+    condition: GREATER_THAN
+    threshold: 500.0  # 500ms P95 latency
+    severity: LOW
+    enabled: true
+    notify_on_resolve: false
+    notification_channels:
+      - type: SLACK
+
+# Incident Response Configuration
+incident_response:
+  enabled: true
+  automated_remediation_enabled: true
+  thread_pool_size: 4
+  history_retention: 30d
+  escalation_team: "platform-team"
+  max_concurrent_incidents: 10
+
+# Alert Suppression Rules
+suppression_rules:
+  # Suppress duplicate alerts during maintenance windows
+  - name: "MaintenanceWindow"
+    description: "Suppress alerts during scheduled maintenance"
+    enabled: false
+    start_time: "02:00"
+    end_time: "04:00"
+    timezone: "UTC"
+    days_of_week: [1, 7]  # Monday and Sunday
+    suppressed_severities: [LOW, MEDIUM]
+
+  # Suppress low priority alerts during business hours
+  - name: "BusinessHours"
+    description: "Suppress low priority alerts during business hours"
+    enabled: true
+    start_time: "09:00"
+    end_time: "17:00"
+    timezone: "UTC"
+    days_of_week: [1, 2, 3, 4, 5]  # Weekdays
+    suppressed_severities: [LOW]
+
+# Environment-specific overrides
+environments:
+  development:
+    alert_rules:
+      # Disable most alerts in development
+      - name: "CircuitBreakerOpen"
+        enabled: false
+      - name: "HighErrorRate"
+        threshold: 10.0  # Higher threshold for dev
+      - name: "HighMemoryUsage"
+        threshold: 95.0  # Higher threshold for dev
+    
+    notification_channels:
+      slack:
+        channel: "#dev-alerts"
+      
+      # Disable PagerDuty in development
+      pagerduty:
+        enabled: false
+
+  staging:
+    alert_rules:
+      - name: "HighErrorRate"
+        threshold: 7.0  # Slightly higher threshold for staging
+      - name: "HighMemoryUsage"
+        threshold: 92.0
+    
+    notification_channels:
+      slack:
+        channel: "#staging-alerts"
+      
+      pagerduty:
+        integration_key: ${PAGERDUTY_STAGING_KEY}
+
+  production:
+    # Use default configuration for production
+    alert_rules: []
+    
+    notification_channels:
+      slack:
+        channel: "#production-alerts"
+      
+      pagerduty:
+        integration_key: ${PAGERDUTY_PRODUCTION_KEY}

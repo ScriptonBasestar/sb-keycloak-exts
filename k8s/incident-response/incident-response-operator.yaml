@@ -1,0 +1,552 @@
+# Kubernetes Incident Response Operator for Keycloak Kafka Event Listener
+# This operator automates incident response based on alerts
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: incident-response-operator
+  namespace: keycloak-kafka
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: incident-response-operator
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "scale"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["servicemonitors", "prometheusrules"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["events.k8s.io"]
+  resources: ["events"]
+  verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: incident-response-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: incident-response-operator
+subjects:
+- kind: ServiceAccount
+  name: incident-response-operator
+  namespace: keycloak-kafka
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: incident-response-config
+  namespace: keycloak-kafka
+data:
+  config.yaml: |
+    # Incident Response Configuration
+    incident_response:
+      enabled: true
+      automation_level: "auto"  # auto, semi-auto, manual
+      max_concurrent_incidents: 5
+      
+    # Remediation Actions Configuration
+    remediations:
+      circuit_breaker_reset:
+        enabled: true
+        timeout: 30s
+        retry_count: 2
+        endpoint: "http://keycloak-kafka:9090/admin/circuit-breaker/reset"
+        
+      backpressure_drain:
+        enabled: true
+        timeout: 60s
+        retry_count: 2
+        endpoint: "http://keycloak-kafka:9090/admin/backpressure/drain"
+        
+      memory_cleanup:
+        enabled: true
+        timeout: 30s
+        retry_count: 1
+        method: "gc_force"
+        
+      pod_restart:
+        enabled: true
+        timeout: 300s
+        retry_count: 1
+        grace_period: 30s
+        
+      scale_up:
+        enabled: true
+        timeout: 600s
+        retry_count: 1
+        max_replicas: 10
+        scale_factor: 2
+        
+      log_cleanup:
+        enabled: true
+        timeout: 120s
+        retry_count: 1
+        retention_hours: 168  # 7 days
+        
+    # Alert to Remediation Mapping
+    alert_mappings:
+      KeycloakKafkaCircuitBreakerOpen:
+        - action: "circuit_breaker_reset"
+          condition: "downstream_healthy"
+        - action: "pod_restart"
+          condition: "reset_failed"
+          
+      KeycloakKafkaBackpressureActive:
+        - action: "backpressure_drain"
+        - action: "scale_up"
+          condition: "drain_failed"
+          
+      KeycloakKafkaMemoryUsageHigh:
+        - action: "memory_cleanup"
+        - action: "scale_up"
+          condition: "memory_still_high"
+        - action: "pod_restart"
+          condition: "critical_memory"
+          
+      KeycloakKafkaConnectionFailures:
+        - action: "pod_restart"
+          
+      KeycloakKafkaHighDiskUsage:
+        - action: "log_cleanup"
+        - action: "scale_up"
+          condition: "cleanup_insufficient"
+          
+    # Escalation Configuration
+    escalation:
+      enabled: true
+      default_timeout: 300s  # 5 minutes
+      levels:
+        - level: 1
+          timeout: 300s
+          actions: ["automated_remediation"]
+        - level: 2
+          timeout: 900s  # 15 minutes
+          actions: ["human_notification", "scale_up"]
+        - level: 3
+          timeout: 1800s  # 30 minutes
+          actions: ["emergency_scale", "executive_notification"]
+          
+    # Notification Configuration
+    notifications:
+      slack:
+        webhook_url: "${SLACK_WEBHOOK_URL}"
+        channel: "#incident-response"
+      email:
+        smtp_host: "${SMTP_HOST}"
+        recipients: ["ops-team@company.com"]
+      pagerduty:
+        integration_key: "${PAGERDUTY_INTEGRATION_KEY}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: incident-response-operator
+  namespace: keycloak-kafka
+  labels:
+    app: incident-response-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: incident-response-operator
+  template:
+    metadata:
+      labels:
+        app: incident-response-operator
+    spec:
+      serviceAccountName: incident-response-operator
+      containers:
+      - name: operator
+        image: incident-response-operator:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: metrics
+          containerPort: 8080
+        - name: health
+          containerPort: 8081
+        env:
+        - name: WATCH_NAMESPACE
+          value: "keycloak-kafka"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: OPERATOR_NAME
+          value: "incident-response-operator"
+        - name: SLACK_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: incident-response-secrets
+              key: slack-webhook-url
+        - name: SMTP_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: incident-response-config
+              key: smtp-host
+              optional: true
+        - name: PAGERDUTY_INTEGRATION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: incident-response-secrets
+              key: pagerduty-integration-key
+        volumeMounts:
+        - name: config
+          mountPath: /etc/incident-response
+          readOnly: true
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: incident-response-config
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: incident-response-secrets
+  namespace: keycloak-kafka
+type: Opaque
+stringData:
+  slack-webhook-url: "${SLACK_WEBHOOK_URL}"
+  pagerduty-integration-key: "${PAGERDUTY_INTEGRATION_KEY}"
+  smtp-password: "${SMTP_PASSWORD}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: incident-response-operator
+  namespace: keycloak-kafka
+  labels:
+    app: incident-response-operator
+spec:
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+  - name: health
+    port: 8081
+    targetPort: 8081
+  selector:
+    app: incident-response-operator
+---
+# ServiceMonitor for Prometheus monitoring
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: incident-response-operator
+  namespace: keycloak-kafka
+  labels:
+    app: incident-response-operator
+spec:
+  selector:
+    matchLabels:
+      app: incident-response-operator
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+---
+# RBAC for webhook receiver
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: incident-webhook-receiver
+  namespace: keycloak-kafka
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: incident-webhook-receiver
+  namespace: keycloak-kafka
+  labels:
+    app: incident-webhook-receiver
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: incident-webhook-receiver
+  template:
+    metadata:
+      labels:
+        app: incident-webhook-receiver
+    spec:
+      serviceAccountName: incident-webhook-receiver
+      containers:
+      - name: webhook
+        image: incident-webhook-receiver:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+        env:
+        - name: OPERATOR_ENDPOINT
+          value: "http://incident-response-operator:8080"
+        - name: WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: incident-response-secrets
+              key: webhook-secret
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: incident-webhook-receiver
+  namespace: keycloak-kafka
+  labels:
+    app: incident-webhook-receiver
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    app: incident-webhook-receiver
+---
+# Ingress for webhook receiver
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: incident-webhook-receiver
+  namespace: keycloak-kafka
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - incident-webhook.company.com
+    secretName: incident-webhook-tls
+  rules:
+  - host: incident-webhook.company.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: incident-webhook-receiver
+            port:
+              number: 80
+---
+# Job for automated remediation scripts
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-remediation-scripts
+  namespace: keycloak-kafka
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: setup
+        image: alpine:latest
+        command:
+        - sh
+        - -c
+        - |
+          # Create remediation scripts
+          mkdir -p /scripts
+          
+          # Circuit breaker reset script
+          cat > /scripts/reset-circuit-breaker.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          INSTANCE=${1:-keycloak-kafka}
+          ENDPOINT="http://${INSTANCE}:9090/admin/circuit-breaker/reset"
+          
+          echo "Resetting circuit breaker for ${INSTANCE}..."
+          
+          if curl -X POST "${ENDPOINT}" --max-time 30; then
+            echo "Circuit breaker reset successful"
+            exit 0
+          else
+            echo "Circuit breaker reset failed"
+            exit 1
+          fi
+          EOF
+          
+          # Memory cleanup script
+          cat > /scripts/cleanup-memory.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          POD_NAME=${1:-keycloak-kafka}
+          NAMESPACE=${2:-keycloak-kafka}
+          
+          echo "Forcing garbage collection for ${POD_NAME}..."
+          
+          kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- jcmd 1 GC.run
+          
+          # Wait and check memory usage
+          sleep 30
+          MEMORY_USAGE=$(kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- jcmd 1 VM.memory | grep "used" | awk '{print $2}')
+          echo "Memory cleanup completed. Current usage: ${MEMORY_USAGE}"
+          EOF
+          
+          # Log cleanup script
+          cat > /scripts/cleanup-logs.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          POD_NAME=${1:-keycloak-kafka}
+          NAMESPACE=${2:-keycloak-kafka}
+          RETENTION_HOURS=${3:-168}  # 7 days
+          
+          echo "Cleaning up logs older than ${RETENTION_HOURS} hours for ${POD_NAME}..."
+          
+          kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- find /opt/keycloak/logs -name "*.log" -mtime +$((RETENTION_HOURS/24)) -delete
+          kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- find /opt/keycloak/logs -name "*.log.gz" -mtime +$((RETENTION_HOURS/24)) -delete
+          
+          echo "Log cleanup completed"
+          EOF
+          
+          # Make scripts executable
+          chmod +x /scripts/*.sh
+          
+          echo "Remediation scripts created successfully"
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+      volumes:
+      - name: scripts
+        emptyDir: {}
+---
+# CronJob for periodic health checks
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: incident-health-check
+  namespace: keycloak-kafka
+spec:
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: health-check
+            image: curlimages/curl:latest
+            command:
+            - sh
+            - -c
+            - |
+              # Health check script
+              echo "Performing health check..."
+              
+              # Check Keycloak Kafka service
+              if ! curl -f http://keycloak-kafka:8080/health --max-time 30; then
+                echo "Health check failed for keycloak-kafka service"
+                
+                # Trigger incident response
+                curl -X POST http://incident-response-operator:8080/api/v1/incidents \
+                  -H "Content-Type: application/json" \
+                  -d '{
+                    "type": "health_check_failure",
+                    "severity": "high",
+                    "source": "periodic_health_check",
+                    "description": "Keycloak Kafka service health check failed",
+                    "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+                  }'
+                exit 1
+              fi
+              
+              echo "Health check passed"
+---
+# NetworkPolicy for incident response communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: incident-response-policy
+  namespace: keycloak-kafka
+spec:
+  podSelector:
+    matchLabels:
+      app: incident-response-operator
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: incident-webhook-receiver
+    ports:
+    - protocol: TCP
+      port: 8080
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8080  # Metrics
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: keycloak-kafka
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090
+  - to: []  # Allow all outbound for notifications
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80

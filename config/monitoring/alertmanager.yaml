@@ -1,0 +1,386 @@
+# AlertManager Configuration for Keycloak Kafka Event Listener
+global:
+  # SMTP configuration for email notifications
+  smtp_smarthost: '${SMTP_HOST:smtp.company.com}:${SMTP_PORT:587}'
+  smtp_from: '${SMTP_FROM:alerts@company.com}'
+  smtp_auth_username: '${SMTP_USERNAME}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+  # Slack API URL
+  slack_api_url: '${SLACK_API_URL}'
+
+  # PagerDuty API URL
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+  # Default template paths
+  templates:
+    - '/etc/alertmanager/templates/*.tmpl'
+
+# Alert routing configuration
+route:
+  # Default settings
+  group_by: ['alertname', 'severity', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default-receiver'
+
+  # Routing tree
+  routes:
+    # Critical alerts - immediate notification to all channels
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 30m
+      routes:
+        # Circuit breaker alerts - special handling
+        - match:
+            alertname: KeycloakKafkaCircuitBreakerOpen
+          receiver: 'circuit-breaker-alerts'
+          group_wait: 0s
+          repeat_interval: 15m
+
+        # Service down - immediate escalation
+        - match:
+            alertname: KeycloakKafkaServiceDown
+          receiver: 'service-down-alerts'
+          group_wait: 0s
+          repeat_interval: 5m
+
+    # High priority alerts
+    - match:
+        severity: high
+      receiver: 'high-priority-alerts'
+      group_wait: 1m
+      group_interval: 5m
+      repeat_interval: 2h
+
+    # Medium priority alerts
+    - match:
+        severity: medium
+      receiver: 'medium-priority-alerts'
+      group_wait: 5m
+      group_interval: 10m
+      repeat_interval: 6h
+
+    # Low priority alerts - business hours only
+    - match:
+        severity: low
+      receiver: 'low-priority-alerts'
+      group_wait: 10m
+      group_interval: 30m
+      repeat_interval: 24h
+      active_time_intervals:
+        - business-hours
+
+    # Recovery alerts - informational
+    - match:
+        alert_type: recovery
+      receiver: 'recovery-alerts'
+      group_wait: 2m
+      repeat_interval: 0s  # Don't repeat recovery alerts
+
+    # Development environment - reduced alerting
+    - match_re:
+        environment: 'dev|development'
+      receiver: 'dev-alerts'
+      group_wait: 10m
+      repeat_interval: 12h
+
+    # Staging environment
+    - match:
+        environment: staging
+      receiver: 'staging-alerts'
+      group_wait: 5m
+      repeat_interval: 4h
+
+# Time intervals for alert suppression
+time_intervals:
+  - name: business-hours
+    time_intervals:
+      - times:
+          - start_time: '09:00'
+            end_time: '17:00'
+        weekdays: ['monday:friday']
+        location: 'UTC'
+
+  - name: maintenance-window
+    time_intervals:
+      - times:
+          - start_time: '02:00'
+            end_time: '04:00'
+        weekdays: ['sunday']
+        location: 'UTC'
+
+# Inhibition rules to suppress redundant alerts
+inhibit_rules:
+  # Suppress lower severity alerts when higher severity is active
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity =~ medium|low
+    equal: ['alertname', 'instance']
+
+  - source_matchers:
+      - severity = high
+    target_matchers:
+      - severity =~ medium|low
+    equal: ['alertname', 'instance']
+
+  # Suppress specific alert combinations
+  - source_matchers:
+      - alertname = KeycloakKafkaServiceDown
+    target_matchers:
+      - service = keycloak-kafka-event-listener
+    equal: ['instance']
+
+  - source_matchers:
+      - alertname = KeycloakKafkaCircuitBreakerOpen
+    target_matchers:
+      - alertname = KeycloakKafkaConnectionFailures
+    equal: ['instance']
+
+# Receiver configurations
+receivers:
+  # Default receiver
+  - name: 'default-receiver'
+    email_configs:
+      - to: '${DEFAULT_EMAIL:platform-team@company.com}'
+        subject: '[Keycloak Kafka] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Severity: {{ .Labels.severity }}
+          {{ end }}
+
+  # Critical alerts - all channels
+  - name: 'critical-alerts'
+    email_configs:
+      - to: '${CRITICAL_EMAIL:platform-team@company.com,ops-team@company.com}'
+        subject: '[CRITICAL] Keycloak Kafka - {{ .GroupLabels.alertname }}'
+        body: |
+          🚨 CRITICAL ALERT 🚨
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Runbook: {{ .Annotations.runbook_url }}
+          Dashboard: {{ .Annotations.dashboard_url }}
+          
+          Time: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          {{ end }}
+        headers:
+          X-Priority: "1"
+
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#critical-alerts'
+        username: 'Keycloak Kafka Alerts'
+        icon_emoji: ':rotating_light:'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Instance:* {{ .Labels.instance }}
+          *Severity:* {{ .Labels.severity }}
+          *Description:* {{ .Annotations.description }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ if .Annotations.dashboard_url }}*Dashboard:* {{ .Annotations.dashboard_url }}{{ end }}
+          {{ end }}
+        color: 'danger'
+
+    pagerduty_configs:
+      - routing_key: '${PAGERDUTY_INTEGRATION_KEY}'
+        description: '{{ .GroupLabels.alertname }}: {{ .GroupLabels.instance }}'
+        severity: 'critical'
+        details:
+          firing: '{{ .Alerts.Firing | len }}'
+          resolved: '{{ .Alerts.Resolved | len }}'
+          environment: '{{ .GroupLabels.environment }}'
+        links:
+          - href: '{{ .CommonAnnotations.dashboard_url }}'
+            text: 'View Dashboard'
+          - href: '{{ .CommonAnnotations.runbook_url }}'
+            text: 'Runbook'
+
+    webhook_configs:
+      - url: '${WEBHOOK_URL}'
+        send_resolved: true
+        http_config:
+          bearer_token: '${WEBHOOK_TOKEN}'
+        title: 'Keycloak Kafka Critical Alert'
+        text: |
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ end }}
+
+  # Circuit breaker specific alerts
+  - name: 'circuit-breaker-alerts'
+    email_configs:
+      - to: '${CRITICAL_EMAIL:platform-team@company.com}'
+        subject: '[CIRCUIT BREAKER] Keycloak Kafka - {{ .GroupLabels.alertname }}'
+        body: |
+          ⚡ CIRCUIT BREAKER ALERT ⚡
+          
+          The circuit breaker for Keycloak Kafka Event Listener is OPEN.
+          This indicates repeated failures in event processing.
+          
+          {{ range .Alerts }}
+          Instance: {{ .Labels.instance }}
+          Time: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          
+          IMMEDIATE ACTIONS REQUIRED:
+          1. Check Kafka broker health
+          2. Verify network connectivity
+          3. Review authentication credentials
+          4. Check recent error logs
+          
+          Runbook: {{ .Annotations.runbook_url }}
+          Dashboard: {{ .Annotations.dashboard_url }}
+          {{ end }}
+
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#critical-alerts'
+        username: 'Circuit Breaker Alert'
+        icon_emoji: ':zap:'
+        title: '⚡ CIRCUIT BREAKER OPEN'
+        text: |
+          Circuit breaker is OPEN for Keycloak Kafka Event Listener
+          
+          {{ range .Alerts }}
+          *Instance:* {{ .Labels.instance }}
+          *Time:* {{ .StartsAt.Format "15:04:05" }}
+          
+          *Immediate Actions:*
+          • Check Kafka broker health: `kubectl get pods -l app=kafka`
+          • Verify connectivity: `telnet kafka-broker 9092`
+          • Reset circuit breaker: `curl -X POST http://{{ .Labels.instance }}:9090/admin/circuit-breaker/reset`
+          
+          <{{ .Annotations.dashboard_url }}|View Dashboard> | <{{ .Annotations.runbook_url }}|Runbook>
+          {{ end }}
+        color: 'danger'
+
+    pagerduty_configs:
+      - routing_key: '${PAGERDUTY_INTEGRATION_KEY}'
+        description: 'Circuit Breaker OPEN: {{ .GroupLabels.instance }}'
+        severity: 'critical'
+        class: 'circuit-breaker'
+        component: 'keycloak-kafka-event-listener'
+
+  # Service down alerts
+  - name: 'service-down-alerts'
+    email_configs:
+      - to: '${CRITICAL_EMAIL:platform-team@company.com,ops-team@company.com}'
+        subject: '[SERVICE DOWN] Keycloak Kafka - {{ .GroupLabels.alertname }}'
+        body: |
+          🚨 SERVICE DOWN 🚨
+          
+          Keycloak Kafka Event Listener service is not responding.
+          
+          {{ range .Alerts }}
+          Instance: {{ .Labels.instance }}
+          Time: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          
+          IMMEDIATE ESCALATION REQUIRED
+          {{ end }}
+
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#critical-alerts'
+        username: 'Service Down Alert'
+        icon_emoji: ':x:'
+        title: '🚨 SERVICE DOWN'
+        text: |
+          Keycloak Kafka Event Listener is DOWN
+          
+          {{ range .Alerts }}
+          *Instance:* {{ .Labels.instance }}
+          *Time:* {{ .StartsAt.Format "15:04:05" }}
+          
+          @channel IMMEDIATE ATTENTION REQUIRED
+          {{ end }}
+        color: 'danger'
+
+    pagerduty_configs:
+      - routing_key: '${PAGERDUTY_CRITICAL_KEY}'
+        description: 'SERVICE DOWN: {{ .GroupLabels.instance }}'
+        severity: 'critical'
+        class: 'availability'
+
+  # High priority alerts
+  - name: 'high-priority-alerts'
+    email_configs:
+      - to: '${HIGH_PRIORITY_EMAIL:platform-team@company.com}'
+        subject: '[HIGH] Keycloak Kafka - {{ .GroupLabels.alertname }}'
+
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#platform-alerts'
+        username: 'Keycloak Kafka Alerts'
+        icon_emoji: ':warning:'
+        title: '⚠️ HIGH: {{ .GroupLabels.alertname }}'
+        color: 'warning'
+
+  # Medium priority alerts
+  - name: 'medium-priority-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#platform-alerts'
+        username: 'Keycloak Kafka Alerts'
+        icon_emoji: ':exclamation:'
+        title: 'ℹ️ MEDIUM: {{ .GroupLabels.alertname }}'
+        color: 'good'
+
+  # Low priority alerts
+  - name: 'low-priority-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#platform-info'
+        username: 'Keycloak Kafka Alerts'
+        icon_emoji: ':information_source:'
+        title: 'ℹ️ LOW: {{ .GroupLabels.alertname }}'
+
+  # Recovery alerts
+  - name: 'recovery-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#platform-alerts'
+        username: 'Keycloak Kafka Recovery'
+        icon_emoji: ':white_check_mark:'
+        title: '✅ RECOVERED: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Instance:* {{ .Labels.instance }}
+          *Time:* {{ .StartsAt.Format "15:04:05" }}
+          {{ end }}
+        color: 'good'
+
+  # Development environment alerts
+  - name: 'dev-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#dev-alerts'
+        username: 'Keycloak Kafka Dev'
+        icon_emoji: ':construction:'
+        title: '🚧 DEV: {{ .GroupLabels.alertname }}'
+
+  # Staging environment alerts
+  - name: 'staging-alerts'
+    email_configs:
+      - to: '${STAGING_EMAIL:staging-team@company.com}'
+        subject: '[STAGING] Keycloak Kafka - {{ .GroupLabels.alertname }}'
+
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#staging-alerts'
+        username: 'Keycloak Kafka Staging'
+        icon_emoji: ':test_tube:'
+        title: '🧪 STAGING: {{ .GroupLabels.alertname }}'
