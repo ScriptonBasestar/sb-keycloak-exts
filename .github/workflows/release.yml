@@ -4,82 +4,263 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - rc
+      auto_publish:
+        description: 'Auto publish release'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/keycloak-kafka-event-listener
 
 jobs:
-  build:
+  validate:
+    name: Validate Release
     runs-on: ubuntu-latest
-    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
-    
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    
-    - name: Extract version from tag
-      id: version
-      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-    
-    - name: Build with Gradle
-      run: ./gradlew build -Pversion=${{ steps.version.outputs.VERSION }}
-    
-    - name: Build Shadow JARs
-      run: |
-        ./gradlew :idps:idp-kakao:shadowJar -Pversion=${{ steps.version.outputs.VERSION }}
-        ./gradlew :idps:idp-line:shadowJar -Pversion=${{ steps.version.outputs.VERSION }}
-        ./gradlew :idps:idp-naver:shadowJar -Pversion=${{ steps.version.outputs.VERSION }}
-    
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        body: |
-          ## Keycloak Identity Provider Extensions ${{ steps.version.outputs.VERSION }}
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual release - bump version
+            ./scripts/release/version-manager.sh bump ${{ github.event.inputs.release_type }}
+            VERSION=$(./scripts/release/version-manager.sh current)
+          else
+            # Tag-based release - extract from tag
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
           
-          ### What's Changed
-          Please see the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           
-          ### Installation
-          Download the appropriate JAR file for your identity provider and copy it to your Keycloak `providers/` directory.
-        draft: false
-        prerelease: false
-    
-    - name: Upload Kakao IDP JAR
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./idps/idp-kakao/build/libs/idp-kakao-${{ steps.version.outputs.VERSION }}-all.jar
-        asset_name: keycloak-idp-kakao-${{ steps.version.outputs.VERSION }}.jar
-        asset_content_type: application/java-archive
-    
-    - name: Upload LINE IDP JAR
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./idps/idp-line/build/libs/idp-line-${{ steps.version.outputs.VERSION }}-all.jar
-        asset_name: keycloak-idp-line-${{ steps.version.outputs.VERSION }}.jar
-        asset_content_type: application/java-archive
-    
-    - name: Upload Naver IDP JAR
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./idps/idp-naver/build/libs/idp-naver-${{ steps.version.outputs.VERSION }}-all.jar
-        asset_name: keycloak-idp-naver-${{ steps.version.outputs.VERSION }}.jar
-        asset_content_type: application/java-archive
+          # Check if pre-release
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run tests
+        run: ./gradlew test
+
+  build:
+    name: Build Release Artifacts
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set version
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          echo "version=$VERSION" > gradle.properties
+
+      - name: Build JAR
+        run: |
+          ./gradlew clean build shadowJar -x test
+          
+      - name: Generate checksums
+        run: |
+          cd events/event-listener-kafka/build/libs
+          for file in *.jar; do
+            sha256sum "$file" > "$file.sha256"
+            sha512sum "$file" > "$file.sha512"
+          done
+
+      - name: Upload JAR artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar-artifacts
+          path: |
+            events/event-listener-kafka/build/libs/*.jar
+            events/event-listener-kafka/build/libs/*.sha256
+            events/event-listener-kafka/build/libs/*.sha512
+
+      # Also build IDPs for backward compatibility
+      - name: Build IDP JARs
+        run: |
+          ./gradlew :idps:idp-kakao:shadowJar -Pversion=${{ needs.validate.outputs.version }}
+          ./gradlew :idps:idp-line:shadowJar -Pversion=${{ needs.validate.outputs.version }}
+          ./gradlew :idps:idp-naver:shadowJar -Pversion=${{ needs.validate.outputs.version }}
+
+      - name: Upload IDP artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: idp-artifacts
+          path: |
+            idps/*/build/libs/*-all.jar
+
+  docker:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [validate, build]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Download JAR artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: jar-artifacts
+          path: events/event-listener-kafka/build/libs/
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [validate, build, docker]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts/
+
+      - name: Generate changelog
+        run: |
+          ./scripts/release/version-manager.sh changelog
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          
+          # Copy Kafka Event Listener JAR files
+          find release-artifacts/ -name "*.jar" -path "*/jar-artifacts/*" -exec cp {} release-assets/ \;
+          find release-artifacts/ -name "*.sha256" -path "*/jar-artifacts/*" -exec cp {} release-assets/ \;
+          find release-artifacts/ -name "*.sha512" -path "*/jar-artifacts/*" -exec cp {} release-assets/ \;
+          
+          # Copy IDP JARs for backward compatibility
+          find release-artifacts/ -name "*-all.jar" -path "*/idp-artifacts/*" -exec cp {} release-assets/ \;
+          
+          # Create combined checksum file
+          cd release-assets
+          if ls *.jar 1> /dev/null 2>&1; then
+            sha256sum *.jar > checksums.txt
+          fi
+          cd ..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.validate.outputs.version }}
+          name: Release v${{ needs.validate.outputs.version }}
+          body: |
+            ## Keycloak Extensions ${{ needs.validate.outputs.version }}
+            
+            ### What's New
+            
+            #### Keycloak Kafka Event Listener
+            - Advanced event streaming to Apache Kafka
+            - Real-time monitoring and alerting
+            - Performance optimization and circuit breaker
+            - Production-ready Docker and Kubernetes deployment
+            
+            #### Identity Provider Extensions
+            - Kakao, LINE, Naver identity provider support
+            - Enhanced security and authentication
+            
+            ### Installation
+            
+            #### Kafka Event Listener
+            ```bash
+            # Download and install
+            wget https://github.com/${{ github.repository }}/releases/download/v${{ needs.validate.outputs.version }}/keycloak-kafka-event-listener-${{ needs.validate.outputs.version }}.jar
+            cp keycloak-kafka-event-listener-${{ needs.validate.outputs.version }}.jar $KEYCLOAK_HOME/providers/
+            $KEYCLOAK_HOME/bin/kc.sh build
+            ```
+            
+            #### Docker
+            ```bash
+            docker pull ghcr.io/${{ github.repository }}/keycloak-kafka-event-listener:${{ needs.validate.outputs.version }}
+            ```
+            
+            ### Documentation
+            - [Installation Guide](docs/INSTALLATION.md)
+            - [Configuration Reference](docs/CONFIGURATION.md)
+            - [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
+            
+            ### Changelog
+            Please see the [CHANGELOG](CHANGELOG.md) for complete details.
+          files: release-assets/*
+          prerelease: ${{ needs.validate.outputs.is_prerelease == 'true' }}
+          generate_release_notes: true
+          append_body: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
