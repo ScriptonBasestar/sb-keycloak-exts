@@ -3,7 +3,9 @@ package org.scriptonbasestar.kcexts.events.kafka
 import org.keycloak.events.EventType
 import org.keycloak.models.KeycloakSession
 
-class KafkaEventListenerConfig(session: KeycloakSession) {
+class KafkaEventListenerConfig(
+    session: KeycloakSession,
+) {
     val bootstrapServers: String
     val eventTopic: String
     val adminEventTopic: String
@@ -36,15 +38,15 @@ class KafkaEventListenerConfig(session: KeycloakSession) {
             if (includedTypesStr.isBlank()) {
                 EventType.values().toSet()
             } else {
-                includedTypesStr.split(",")
+                includedTypesStr
+                    .split(",")
                     .mapNotNull { typeName ->
                         try {
                             EventType.valueOf(typeName.trim().uppercase())
                         } catch (e: IllegalArgumentException) {
                             null
                         }
-                    }
-                    .toSet()
+                    }.toSet()
             }
 
         enableAdminEvents = attributes["kafka.enable.admin.events"]?.toBoolean()

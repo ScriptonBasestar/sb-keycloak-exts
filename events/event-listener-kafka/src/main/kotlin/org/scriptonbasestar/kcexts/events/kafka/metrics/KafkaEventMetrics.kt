@@ -21,7 +21,9 @@ class KafkaEventMetrics {
     private val connectionStatus = AtomicLong(1) // 1 = connected, 0 = disconnected
 
     // Simple timer for tracking processing times
-    class TimerSample(private val startTime: Long = System.currentTimeMillis()) {
+    class TimerSample(
+        private val startTime: Long = System.currentTimeMillis(),
+    ) {
         fun stop(): Long = System.currentTimeMillis() - startTime
     }
 
@@ -37,7 +39,7 @@ class KafkaEventMetrics {
         eventsSentTotal.incrementAndGet()
         eventSizeAccumulator.addAndGet(sizeBytes.toLong())
         eventCountAccumulator.incrementAndGet()
-        
+
         logger.trace("Event sent recorded: type=$eventType, realm=$realm, topic=$topic, size=$sizeBytes")
     }
 
@@ -57,9 +59,7 @@ class KafkaEventMetrics {
     /**
      * Start timing an event
      */
-    fun startTimer(): TimerSample {
-        return TimerSample()
-    }
+    fun startTimer(): TimerSample = TimerSample()
 
     /**
      * Stop timing and record
@@ -100,20 +100,22 @@ class KafkaEventMetrics {
     fun getMetricsSummary(): MetricsSummary {
         val totalEventsSent = eventsSentTotal.get()
         val totalEventsFailed = eventsFailedTotal.get()
-        val avgEventSize = if (eventCountAccumulator.get() > 0) {
-            eventSizeAccumulator.get() / eventCountAccumulator.get()
-        } else {
-            0L
-        }
+        val avgEventSize =
+            if (eventCountAccumulator.get() > 0) {
+                eventSizeAccumulator.get() / eventCountAccumulator.get()
+            } else {
+                0L
+            }
 
         return MetricsSummary(
             totalEventsSent = totalEventsSent,
             totalEventsFailed = totalEventsFailed,
-            successRate = if (totalEventsSent + totalEventsFailed > 0) {
-                (totalEventsSent.toDouble() / (totalEventsSent + totalEventsFailed)) * 100
-            } else {
-                100.0
-            },
+            successRate =
+                if (totalEventsSent + totalEventsFailed > 0) {
+                    (totalEventsSent.toDouble() / (totalEventsSent + totalEventsFailed)) * 100
+                } else {
+                    100.0
+                },
             activeSessions = activeSessions.get(),
             producerQueueSize = 0L, // Not tracked in basic version
             connectionStatus = connectionStatus.get() == 1L,
@@ -139,10 +141,12 @@ class KafkaEventMetrics {
      */
     fun logMetricsSummary() {
         val summary = getMetricsSummary()
-        logger.info("Kafka Event Metrics Summary - Sent: ${summary.totalEventsSent}, " +
-                   "Failed: ${summary.totalEventsFailed}, Success Rate: ${"%.2f".format(summary.successRate)}%, " +
-                   "Active Sessions: ${summary.activeSessions}, Avg Size: ${summary.averageEventSizeBytes} bytes, " +
-                   "Connected: ${summary.connectionStatus}")
+        logger.info(
+            "Kafka Event Metrics Summary - Sent: ${summary.totalEventsSent}, " +
+                "Failed: ${summary.totalEventsFailed}, Success Rate: ${"%.2f".format(summary.successRate)}%, " +
+                "Active Sessions: ${summary.activeSessions}, Avg Size: ${summary.averageEventSizeBytes} bytes, " +
+                "Connected: ${summary.connectionStatus}",
+        )
     }
 }
 

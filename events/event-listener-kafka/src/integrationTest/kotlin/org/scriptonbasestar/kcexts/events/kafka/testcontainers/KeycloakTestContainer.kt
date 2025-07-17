@@ -63,7 +63,8 @@ class KeycloakTestContainer {
         logger.info("Setting up Keycloak admin client...")
 
         keycloakAdmin =
-            KeycloakBuilder.builder()
+            KeycloakBuilder
+                .builder()
                 .serverUrl(getAuthServerUrl())
                 .realm("master")
                 .username(ADMIN_USERNAME)
@@ -145,7 +146,10 @@ class KeycloakTestContainer {
                     isTemporary = false
                 }
 
-            keycloakAdmin!!.realm(TEST_REALM).users().get(userId)
+            keycloakAdmin!!
+                .realm(TEST_REALM)
+                .users()
+                .get(userId)
                 .resetPassword(passwordCredential)
 
             logger.info("Created user: $TEST_USERNAME")

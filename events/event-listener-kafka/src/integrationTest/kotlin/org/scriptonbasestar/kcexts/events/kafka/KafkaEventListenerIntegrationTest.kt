@@ -69,13 +69,14 @@ class KafkaEventListenerIntegrationTest : BaseIntegrationTest() {
         val testMessage = "test-message-${System.currentTimeMillis()}"
 
         // 메시지 발송
-        producer.send(
-            org.apache.kafka.clients.producer.ProducerRecord(
-                KafkaTestContainer.USER_EVENTS_TOPIC,
-                "test-key",
-                testMessage,
-            ),
-        ).get()
+        producer
+            .send(
+                org.apache.kafka.clients.producer.ProducerRecord(
+                    KafkaTestContainer.USER_EVENTS_TOPIC,
+                    "test-key",
+                    testMessage,
+                ),
+            ).get()
         producer.close()
 
         // 메시지 수신 확인
@@ -105,7 +106,8 @@ class KafkaEventListenerIntegrationTest : BaseIntegrationTest() {
 
         try {
             val response =
-                adminClient.realm(KeycloakTestContainer.TEST_REALM)
+                adminClient
+                    .realm(KeycloakTestContainer.TEST_REALM)
                     .users()
                     .create(user)
 

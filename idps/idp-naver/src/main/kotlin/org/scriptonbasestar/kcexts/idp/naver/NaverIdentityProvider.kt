@@ -38,17 +38,17 @@ class NaverIdentityProvider(
         return user
     }
 
-    override fun doGetFederatedIdentity(accessToken: String): BrokeredIdentityContext {
-        return try {
+    override fun doGetFederatedIdentity(accessToken: String): BrokeredIdentityContext =
+        try {
             val profile =
-                SimpleHttp.doGet(NaverConstant.profileUrl, session)
+                SimpleHttp
+                    .doGet(NaverConstant.profileUrl, session)
                     .param("access_token", accessToken)
                     .asJson()
             extractIdentityFromProfile(null, profile)
         } catch (e: Exception) {
             throw IdentityBrokerException("Could not obtain user profile from naver.", e)
         }
-    }
 
     override fun getDefaultScopes(): String = NaverConstant.defaultScope
 }

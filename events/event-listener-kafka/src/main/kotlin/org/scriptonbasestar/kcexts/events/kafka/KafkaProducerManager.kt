@@ -8,7 +8,9 @@ import org.jboss.logging.Logger
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 
-class KafkaProducerManager(private val config: KafkaEventListenerConfig) {
+class KafkaProducerManager(
+    private val config: KafkaEventListenerConfig,
+) {
     private val logger = Logger.getLogger(KafkaProducerManager::class.java)
     private val producer: KafkaProducer<String, String>
     private val closed = AtomicBoolean(false)

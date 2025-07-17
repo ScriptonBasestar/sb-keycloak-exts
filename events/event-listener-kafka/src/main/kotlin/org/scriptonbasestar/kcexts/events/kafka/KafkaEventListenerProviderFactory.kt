@@ -13,11 +13,12 @@ import java.util.concurrent.ConcurrentHashMap
 class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(KafkaEventListenerProviderFactory::class.java)
     private val producerManagers = ConcurrentHashMap<String, KafkaProducerManager>()
+
     // private var metricsExporter: PrometheusMetricsExporter? = null
     private lateinit var metrics: KafkaEventMetrics
 
-    override fun create(session: KeycloakSession): EventListenerProvider {
-        return try {
+    override fun create(session: KeycloakSession): EventListenerProvider =
+        try {
             val config = KafkaEventListenerConfig(session)
             val producerManager = getOrCreateProducerManager(config)
             KafkaEventListenerProvider(session, config, producerManager, metrics)
@@ -25,7 +26,6 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
             logger.error("Failed to create KafkaEventListenerProvider", e)
             throw e
         }
-    }
 
     private fun getOrCreateProducerManager(config: KafkaEventListenerConfig): KafkaProducerManager {
         val key = "${config.bootstrapServers}:${config.clientId}"

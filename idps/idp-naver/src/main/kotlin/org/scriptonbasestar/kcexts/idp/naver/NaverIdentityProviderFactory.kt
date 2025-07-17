@@ -11,9 +11,7 @@ class NaverIdentityProviderFactory :
     override fun create(
         session: KeycloakSession,
         model: IdentityProviderModel,
-    ): NaverIdentityProvider {
-        return NaverIdentityProvider(session, NaverIdentityProviderConfig(model))
-    }
+    ): NaverIdentityProvider = NaverIdentityProvider(session, NaverIdentityProviderConfig(model))
 
     override fun getId(): String = NaverConstant.providerId
 

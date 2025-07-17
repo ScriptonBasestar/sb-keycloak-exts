@@ -11,9 +11,7 @@ class GitHubIdentityProviderFactory :
     override fun create(
         session: KeycloakSession,
         model: IdentityProviderModel,
-    ): GitHubIdentityProvider {
-        return GitHubIdentityProvider(session, GitHubIdentityProviderConfig(model))
-    }
+    ): GitHubIdentityProvider = GitHubIdentityProvider(session, GitHubIdentityProviderConfig(model))
 
     override fun getId(): String = GitHubConstant.providerId
 

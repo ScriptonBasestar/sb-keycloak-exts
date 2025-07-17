@@ -11,9 +11,7 @@ class KakaoIdentityProviderFactory :
     override fun create(
         session: KeycloakSession,
         model: IdentityProviderModel,
-    ): KakaoIdentityProvider {
-        return KakaoIdentityProvider(session, KakaoIdentityProviderConfig(model))
-    }
+    ): KakaoIdentityProvider = KakaoIdentityProvider(session, KakaoIdentityProviderConfig(model))
 
     override fun getId(): String = KakaoConstant.providerId
 

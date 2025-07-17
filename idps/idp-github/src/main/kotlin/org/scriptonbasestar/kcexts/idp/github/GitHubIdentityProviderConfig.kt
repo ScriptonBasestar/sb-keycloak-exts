@@ -105,11 +105,10 @@ class GitHubIdentityProviderConfig : OAuth2IdentityProviderConfig {
     }
 
     // Dynamic API URL Generation for Enterprise Support
-    fun getApiUrl(endpoint: String): String {
-        return if (isGitHubEnterprise) {
+    fun getApiUrl(endpoint: String): String =
+        if (isGitHubEnterprise) {
             "${githubEnterpriseUrl.trimEnd('/')}${GitHubConstant.ENTERPRISE_PATH_PREFIX}$endpoint"
         } else {
             "https://api.github.com$endpoint"
         }
-    }
 }

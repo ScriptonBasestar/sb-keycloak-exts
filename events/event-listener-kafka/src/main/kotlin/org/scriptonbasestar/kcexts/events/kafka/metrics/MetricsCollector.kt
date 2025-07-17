@@ -1,13 +1,13 @@
 package org.scriptonbasestar.kcexts.events.kafka.metrics
 
+import com.sun.management.OperatingSystemMXBean
 import org.jboss.logging.Logger
-import java.time.Instant
-import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.ConcurrentHashMap
 import java.lang.management.ManagementFactory
 import java.lang.management.MemoryMXBean
-import com.sun.management.OperatingSystemMXBean
+import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Comprehensive metrics collector for Keycloak Kafka Event Listener
@@ -17,16 +17,15 @@ class MetricsCollector {
     companion object {
         private val logger = Logger.getLogger(MetricsCollector::class.java)
         private val instance = AtomicReference<MetricsCollector>()
-        
-        fun getInstance(): MetricsCollector {
-            return instance.get() ?: synchronized(this) {
+
+        fun getInstance(): MetricsCollector =
+            instance.get() ?: synchronized(this) {
                 instance.get() ?: MetricsCollector().also { instance.set(it) }
             }
-        }
     }
 
     private val memoryMXBean: MemoryMXBean = ManagementFactory.getMemoryMXBean()
-    private val operatingSystemMXBean: OperatingSystemMXBean = 
+    private val operatingSystemMXBean: OperatingSystemMXBean =
         ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean
 
     // Performance counters
@@ -34,13 +33,15 @@ class MetricsCollector {
     private val errorCount = AtomicLong(0)
     private val totalProcessingTime = AtomicLong(0)
     private val latencyHistogram = ConcurrentHashMap<Long, AtomicLong>()
-    
+
     // Connection and circuit breaker states
     private val connectionFailures = AtomicLong(0)
     private val lastConnectionTime = AtomicLong(System.currentTimeMillis())
+
     @Volatile private var circuitBreakerOpen = false
+
     @Volatile private var backpressureActive = false
-    
+
     // Kafka specific metrics
     private val kafkaLag = AtomicLong(0)
     private val kafkaConnected = AtomicReference(true)
@@ -54,11 +55,11 @@ class MetricsCollector {
     fun recordEventProcessed(processingTimeMs: Long) {
         eventCount.incrementAndGet()
         totalProcessingTime.addAndGet(processingTimeMs)
-        
+
         // Update latency histogram (rounded to nearest 10ms bucket)
         val bucket = (processingTimeMs / 10) * 10
         latencyHistogram.computeIfAbsent(bucket) { AtomicLong(0) }.incrementAndGet()
-        
+
         logger.trace("Event processed in ${processingTimeMs}ms")
     }
 
@@ -95,11 +96,11 @@ class MetricsCollector {
     fun getErrorRate(): Double {
         val currentTime = System.currentTimeMillis()
         val oneMinuteAgo = currentTime - 60_000
-        
+
         // Simplified calculation - in production would use time-windowed counters
         val totalEvents = eventCount.get()
         val totalErrors = errorCount.get()
-        
+
         return if (totalEvents > 0) {
             (totalErrors.toDouble() / totalEvents.toDouble()) * 100.0
         } else {
@@ -113,17 +114,17 @@ class MetricsCollector {
     fun getLatencyPercentile(percentile: Double): Long {
         val totalEvents = latencyHistogram.values.sumOf { it.get() }
         if (totalEvents == 0L) return 0L
-        
+
         val targetCount = (totalEvents * percentile / 100.0).toLong()
         var runningCount = 0L
-        
+
         for ((latency, count) in latencyHistogram.toSortedMap()) {
             runningCount += count.get()
             if (runningCount >= targetCount) {
                 return latency
             }
         }
-        
+
         return latencyHistogram.keys.maxOrNull() ?: 0L
     }
 
@@ -138,9 +139,7 @@ class MetricsCollector {
     /**
      * Get CPU usage percentage
      */
-    fun getCpuUsagePercent(): Double {
-        return operatingSystemMXBean.processCpuLoad * 100.0
-    }
+    fun getCpuUsagePercent(): Double = operatingSystemMXBean.processCpuLoad * 100.0
 
     /**
      * Get connection failure rate
@@ -148,7 +147,7 @@ class MetricsCollector {
     fun getConnectionFailureRate(): Double {
         val totalAttempts = eventCount.get()
         val failures = connectionFailures.get()
-        
+
         return if (totalAttempts > 0) {
             (failures.toDouble() / totalAttempts.toDouble()) * 100.0
         } else {
@@ -197,31 +196,33 @@ class MetricsCollector {
     /**
      * Get disk usage percentage
      */
-    fun getDiskUsagePercent(): Double {
-        return try {
+    fun getDiskUsagePercent(): Double =
+        try {
             val file = java.io.File("/")
             val totalSpace = file.totalSpace
             val freeSpace = file.freeSpace
             val usedSpace = totalSpace - freeSpace
-            
+
             (usedSpace.toDouble() / totalSpace.toDouble()) * 100.0
         } catch (e: Exception) {
             logger.warn("Failed to get disk usage", e)
             0.0
         }
-    }
 
     /**
      * Get comprehensive metrics summary
      */
-    fun getMetricsSummary(): Map<String, Any> {
-        return mapOf(
+    fun getMetricsSummary(): Map<String, Any> =
+        mapOf(
             "events_processed" to eventCount.get(),
             "errors_total" to errorCount.get(),
             "error_rate_percent" to getErrorRate(),
-            "avg_processing_time_ms" to if (eventCount.get() > 0) {
-                totalProcessingTime.get() / eventCount.get()
-            } else 0L,
+            "avg_processing_time_ms" to
+                if (eventCount.get() > 0) {
+                    totalProcessingTime.get() / eventCount.get()
+                } else {
+                    0L
+                },
             "latency_p50_ms" to getLatencyPercentile(50.0),
             "latency_p95_ms" to getLatencyPercentile(95.0),
             "latency_p99_ms" to getLatencyPercentile(99.0),
@@ -233,9 +234,8 @@ class MetricsCollector {
             "backpressure_active" to isBackpressureActive(),
             "kafka_lag" to getKafkaLag(),
             "kafka_connected" to kafkaConnected.get(),
-            "last_connection_time" to Instant.ofEpochMilli(lastConnectionTime.get()).toString()
+            "last_connection_time" to Instant.ofEpochMilli(lastConnectionTime.get()).toString(),
         )
-    }
 
     /**
      * Reset all metrics (for testing)

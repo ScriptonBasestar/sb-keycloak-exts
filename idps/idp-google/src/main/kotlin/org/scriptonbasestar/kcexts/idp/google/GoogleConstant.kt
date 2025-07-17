@@ -10,14 +10,14 @@ object GoogleConstant {
     const val USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
     const val PEOPLE_API_URL = "https://people.googleapis.com/v1/people/me"
     const val JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
-    
+
     // Google Admin SDK Endpoints
     const val ADMIN_DIRECTORY_API_BASE = "https://admin.googleapis.com/admin/directory/v1"
     const val ADMIN_USERS_URL = "$ADMIN_DIRECTORY_API_BASE/users"
     const val ADMIN_GROUPS_URL = "$ADMIN_DIRECTORY_API_BASE/groups"
     const val ADMIN_MEMBERS_URL = "$ADMIN_DIRECTORY_API_BASE/groups/{groupKey}/members"
     const val ADMIN_ORGUNIT_URL = "$ADMIN_DIRECTORY_API_BASE/customer/my_customer/orgunits"
-    
+
     // Google Audit API Endpoints
     const val ADMIN_REPORTS_API_BASE = "https://admin.googleapis.com/admin/reports/v1"
     const val AUDIT_ACTIVITIES_URL = "$ADMIN_REPORTS_API_BASE/activity/users/{userKey}/applications/{applicationName}"
@@ -29,13 +29,13 @@ object GoogleConstant {
     const val FULL_PROFILE_SCOPE = "openid email profile https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/user.phonenumbers.read https://www.googleapis.com/auth/user.addresses.read"
     const val CALENDAR_DRIVE_SCOPE = "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive.metadata.readonly"
     const val COMPREHENSIVE_SCOPE = "openid email profile https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/user.phonenumbers.read https://www.googleapis.com/auth/user.addresses.read https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive.metadata.readonly"
-    
+
     // Enterprise Admin Scopes
     const val ADMIN_DIRECTORY_USER_SCOPE = "https://www.googleapis.com/auth/admin.directory.user.readonly"
     const val ADMIN_DIRECTORY_GROUP_SCOPE = "https://www.googleapis.com/auth/admin.directory.group.readonly"
     const val ADMIN_DIRECTORY_ORGUNIT_SCOPE = "https://www.googleapis.com/auth/admin.directory.orgunit.readonly"
     const val ADMIN_REPORTS_AUDIT_SCOPE = "https://www.googleapis.com/auth/admin.reports.audit.readonly"
-    
+
     // Combined Enterprise Scopes
     const val ENTERPRISE_ADMIN_SCOPE = "openid email profile $ADMIN_DIRECTORY_USER_SCOPE $ADMIN_DIRECTORY_GROUP_SCOPE $ADMIN_DIRECTORY_ORGUNIT_SCOPE $ADMIN_REPORTS_AUDIT_SCOPE"
     const val FULL_ENTERPRISE_SCOPE = "$COMPREHENSIVE_SCOPE $ADMIN_DIRECTORY_USER_SCOPE $ADMIN_DIRECTORY_GROUP_SCOPE $ADMIN_DIRECTORY_ORGUNIT_SCOPE $ADMIN_REPORTS_AUDIT_SCOPE"
@@ -47,13 +47,13 @@ object GoogleConstant {
     const val USE_PEOPLE_API_KEY = "usePeopleAPI"
     const val VERIFY_2FA_KEY = "verify2FA"
     const val REQUIRE_2FA_KEY = "require2FA"
-    
+
     // Security Configuration Keys
     const val ENABLE_RATE_LIMITING_KEY = "enableRateLimiting"
     const val VERIFY_ID_TOKEN_KEY = "verifyIdToken"
     const val ENHANCED_STATE_VALIDATION_KEY = "enhancedStateValidation"
     const val JWKS_CACHE_TTL_KEY = "jwksCacheTtl"
-    
+
     // Profile Mapping Configuration Keys
     const val USE_FULL_PROFILE_KEY = "useFullProfile"
     const val ENABLE_CALENDAR_DRIVE_KEY = "enableCalendarDrive"
@@ -61,7 +61,7 @@ object GoogleConstant {
     const val MAP_ADDRESSES_KEY = "mapAddresses"
     const val MAP_LOCALE_SETTINGS_KEY = "mapLocaleSettings"
     const val ENHANCED_ORGANIZATION_MAPPING_KEY = "enhancedOrganizationMapping"
-    
+
     // Enterprise Integration Configuration Keys
     const val ENABLE_ADMIN_SDK_KEY = "enableAdminSDK"
     const val SYNC_GROUPS_KEY = "syncGroups"

@@ -11,9 +11,7 @@ class LineIdentityProviderFactory :
     override fun create(
         session: KeycloakSession,
         model: IdentityProviderModel,
-    ): LineIdentityProvider {
-        return LineIdentityProvider(session, LineIdentityProviderConfig(model))
-    }
+    ): LineIdentityProvider = LineIdentityProvider(session, LineIdentityProviderConfig(model))
 
     override fun getId(): String = LineConstant.providerId
 

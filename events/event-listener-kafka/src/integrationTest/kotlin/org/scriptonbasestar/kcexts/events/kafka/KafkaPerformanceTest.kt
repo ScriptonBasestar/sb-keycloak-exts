@@ -266,25 +266,24 @@ class KafkaPerformanceTest : BaseIntegrationTest() {
         index: Int,
         prefix: String = "test",
         timestamp: Long = System.currentTimeMillis(),
-    ): String {
-        return """
-            {
-                "id": "$prefix-event-$index",
-                "time": $timestamp,
-                "type": "LOGIN",
-                "realmId": "test-realm",
-                "clientId": "test-client",
-                "userId": "user-$index",
-                "sessionId": "session-$index",
-                "ipAddress": "192.168.1.${ (index % 254) + 1}",
-                "details": {
-                    "username": "user$index",
-                    "auth_method": "openid-connect",
-                    "code_id": "code-$index"
-                }
+    ): String =
+        """
+        {
+            "id": "$prefix-event-$index",
+            "time": $timestamp,
+            "type": "LOGIN",
+            "realmId": "test-realm",
+            "clientId": "test-client",
+            "userId": "user-$index",
+            "sessionId": "session-$index",
+            "ipAddress": "192.168.1.${ (index % 254) + 1}",
+            "details": {
+                "username": "user$index",
+                "auth_method": "openid-connect",
+                "code_id": "code-$index"
             }
-            """.trimIndent()
-    }
+        }
+        """.trimIndent()
 
     private fun createLargeTestEventData(index: Int): String {
         val largeDetails = (1..100).associate { "detail_$it" to "value_${it}_$index" }

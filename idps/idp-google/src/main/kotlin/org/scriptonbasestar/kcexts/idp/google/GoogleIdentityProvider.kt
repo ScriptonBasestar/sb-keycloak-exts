@@ -15,13 +15,10 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.security.Signature
 import java.security.interfaces.RSAPublicKey
-import java.security.spec.X509EncodedKeySpec
 import java.time.Instant
 import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
 
 class GoogleIdentityProvider(
     keycloakSession: KeycloakSession,
@@ -33,7 +30,7 @@ class GoogleIdentityProvider(
     SocialIdentityProvider<GoogleIdentityProviderConfig> {
     companion object {
         private val logger = Logger.getLogger(GoogleIdentityProvider::class.java)
-        
+
         // Security enhancements
         private val jwksCache = ConcurrentHashMap<String, RSAPublicKey>()
         private val jwksCacheExpiry = ConcurrentHashMap<String, Long>()
@@ -41,10 +38,10 @@ class GoogleIdentityProvider(
         private val JWKS_CACHE_TTL = TimeUnit.HOURS.toMillis(1) // 1 hour cache
         private val RATE_LIMIT_WINDOW = TimeUnit.MINUTES.toMillis(1) // 1 minute window
         private val MAX_REQUESTS_PER_MINUTE = 60
-        
+
         private data class RateLimitInfo(
             var requestCount: Int = 0,
-            var windowStart: Long = System.currentTimeMillis()
+            var windowStart: Long = System.currentTimeMillis(),
         )
     }
 
@@ -65,12 +62,12 @@ class GoogleIdentityProvider(
         if (config.isEnableRateLimiting) {
             checkRateLimit()
         }
-        
+
         // Enhanced state parameter validation (if enabled)
         if (config.isEnhancedStateValidation) {
             validateStateParameter()
         }
-        
+
         val accessToken =
             extractTokenFromResponse(response, getAccessTokenResponseParameter())
                 ?: throw IdentityBrokerException("No access token available")
@@ -153,20 +150,20 @@ class GoogleIdentityProvider(
             // Extract organization info if using People API
             if (config.isUsePeopleAPI) {
                 extractOrganizationInfo(profile, context)
-                
+
                 // Enhanced profile mapping
                 if (config.isMapPhoneNumbers) {
                     extractPhoneNumbers(profile, context)
                 }
-                
+
                 if (config.isMapAddresses) {
                     extractAddresses(profile, context)
                 }
-                
+
                 if (config.isMapLocaleSettings) {
                     extractEnhancedLocaleSettings(profile, context)
                 }
-                
+
                 // Enterprise integration features
                 if (config.isEnableAdminSDK) {
                     performEnterpriseIntegration(context, accessToken)
@@ -263,12 +260,12 @@ class GoogleIdentityProvider(
         val organizations = profile.get("organizations")
         if (organizations?.isArray == true && organizations.size() > 0) {
             val org = organizations[0]
-            
+
             // Basic organization info
             org.get("name")?.asText()?.let { context.contextData["organization"] = it }
             org.get("title")?.asText()?.let { context.contextData["job_title"] = it }
             org.get("department")?.asText()?.let { context.contextData["department"] = it }
-            
+
             // Enhanced organization mapping if enabled
             if (config.isEnhancedOrganizationMapping) {
                 org.get("type")?.asText()?.let { context.contextData["organization_type"] = it }
@@ -277,7 +274,7 @@ class GoogleIdentityProvider(
                 org.get("startDate")?.asText()?.let { context.contextData["employment_start_date"] = it }
                 org.get("endDate")?.asText()?.let { context.contextData["employment_end_date"] = it }
                 org.get("current")?.asBoolean()?.let { context.contextData["current_employment"] = it.toString() }
-                
+
                 // Extract all organizations if multiple
                 if (organizations.size() > 1) {
                     val orgList = mutableListOf<String>()
@@ -327,44 +324,59 @@ class GoogleIdentityProvider(
     )
 
     // Enhanced Profile Mapping Methods
-    
+
     private fun buildPeopleApiUrl(): String {
-        val baseFields = mutableListOf(
-            "names", "emailAddresses", "photos", "organizations", "locales"
-        )
-        
+        val baseFields =
+            mutableListOf(
+                "names",
+                "emailAddresses",
+                "photos",
+                "organizations",
+                "locales",
+            )
+
         if (config.isMapPhoneNumbers) {
             baseFields.add("phoneNumbers")
         }
-        
+
         if (config.isMapAddresses) {
             baseFields.add("addresses")
         }
-        
+
         if (config.isUseFullProfile) {
-            baseFields.addAll(listOf(
-                "birthdays", "genders", "urls", "biographies",
-                "occupations", "skills", "interests"
-            ))
+            baseFields.addAll(
+                listOf(
+                    "birthdays",
+                    "genders",
+                    "urls",
+                    "biographies",
+                    "occupations",
+                    "skills",
+                    "interests",
+                ),
+            )
         }
-        
+
         return "${GoogleConstant.PEOPLE_API_URL}?personFields=${baseFields.joinToString(",")}"
     }
-    
-    private fun extractPhoneNumbers(profile: JsonNode, context: BrokeredIdentityContext) {
+
+    private fun extractPhoneNumbers(
+        profile: JsonNode,
+        context: BrokeredIdentityContext,
+    ) {
         val phoneNumbers = profile.get("phoneNumbers")
         if (phoneNumbers?.isArray == true && phoneNumbers.size() > 0) {
             val phoneList = mutableListOf<String>()
-            
+
             for (phone in phoneNumbers) {
                 val value = phone.get("value")?.asText()
                 val type = phone.get("type")?.asText()
-                
+
                 if (value != null) {
                     phoneList.add(if (type != null) "$type: $value" else value)
                 }
             }
-            
+
             if (phoneList.isNotEmpty()) {
                 context.contextData["phone_numbers"] = phoneList.joinToString("; ")
                 // Set primary phone if available
@@ -377,48 +389,54 @@ class GoogleIdentityProvider(
             }
         }
     }
-    
-    private fun extractAddresses(profile: JsonNode, context: BrokeredIdentityContext) {
+
+    private fun extractAddresses(
+        profile: JsonNode,
+        context: BrokeredIdentityContext,
+    ) {
         val addresses = profile.get("addresses")
         if (addresses?.isArray == true && addresses.size() > 0) {
             val addressList = mutableListOf<String>()
-            
+
             for (address in addresses) {
                 val formattedValue = address.get("formattedValue")?.asText()
                 val type = address.get("type")?.asText()
-                
+
                 if (formattedValue != null) {
                     addressList.add(if (type != null) "$type: $formattedValue" else formattedValue)
                 }
             }
-            
+
             if (addressList.isNotEmpty()) {
                 context.contextData["addresses"] = addressList.joinToString("; ")
-                
+
                 // Extract structured address components for primary address
                 if (addresses.size() > 0) {
                     val primaryAddress = addresses[0]
-                    primaryAddress.get("streetAddress")?.asText()?.let { 
-                        context.contextData["street_address"] = it 
+                    primaryAddress.get("streetAddress")?.asText()?.let {
+                        context.contextData["street_address"] = it
                     }
-                    primaryAddress.get("city")?.asText()?.let { 
-                        context.contextData["city"] = it 
+                    primaryAddress.get("city")?.asText()?.let {
+                        context.contextData["city"] = it
                     }
-                    primaryAddress.get("region")?.asText()?.let { 
-                        context.contextData["region"] = it 
+                    primaryAddress.get("region")?.asText()?.let {
+                        context.contextData["region"] = it
                     }
-                    primaryAddress.get("postalCode")?.asText()?.let { 
-                        context.contextData["postal_code"] = it 
+                    primaryAddress.get("postalCode")?.asText()?.let {
+                        context.contextData["postal_code"] = it
                     }
-                    primaryAddress.get("country")?.asText()?.let { 
-                        context.contextData["country"] = it 
+                    primaryAddress.get("country")?.asText()?.let {
+                        context.contextData["country"] = it
                     }
                 }
             }
         }
     }
-    
-    private fun extractEnhancedLocaleSettings(profile: JsonNode, context: BrokeredIdentityContext) {
+
+    private fun extractEnhancedLocaleSettings(
+        profile: JsonNode,
+        context: BrokeredIdentityContext,
+    ) {
         // Extract locale information from People API
         val locales = profile.get("locales")
         if (locales?.isArray == true && locales.size() > 0) {
@@ -426,7 +444,7 @@ class GoogleIdentityProvider(
                 val value = locale.get("value")?.asText()
                 if (value != null) {
                     context.contextData["preferred_locale"] = value
-                    
+
                     // Parse locale components
                     try {
                         val parts = value.split("-", "_")
@@ -443,21 +461,24 @@ class GoogleIdentityProvider(
                 }
             }
         }
-        
+
         // Set timezone if available (from organization or inferred)
         context.contextData["timezone"] = inferTimezone(context)
     }
-    
+
     private fun inferTimezone(context: BrokeredIdentityContext): String {
         // Try to infer timezone from country code or region
         val countryCode = context.contextData["country_code"] as? String
         val country = context.contextData["country"] as? String
         val region = context.contextData["region"] as? String
-        
+
         return when {
             countryCode == "US" || country?.contains("United States") == true -> {
                 when {
-                    region?.contains("Pacific") == true || region?.contains("California") == true -> "America/Los_Angeles"
+                    region?.contains(
+                        "Pacific",
+                    ) == true ||
+                        region?.contains("California") == true -> "America/Los_Angeles"
                     region?.contains("Mountain") == true || region?.contains("Denver") == true -> "America/Denver"
                     region?.contains("Central") == true || region?.contains("Chicago") == true -> "America/Chicago"
                     else -> "America/New_York"
@@ -477,109 +498,123 @@ class GoogleIdentityProvider(
     }
 
     // Enterprise Integration Methods
-    
-    private fun performEnterpriseIntegration(context: BrokeredIdentityContext, accessToken: String) {
+
+    private fun performEnterpriseIntegration(
+        context: BrokeredIdentityContext,
+        accessToken: String,
+    ) {
         try {
             // Sync Google Groups membership
             if (config.isSyncGroups) {
                 syncUserGroups(context, accessToken)
             }
-            
+
             // Sync organizational unit information
             if (config.isSyncOrgUnit) {
                 syncOrganizationalUnit(context, accessToken)
             }
-            
+
             // Fetch user account status and sync
             if (config.isRealTimeSync) {
                 syncAccountStatus(context, accessToken)
             }
-            
+
             // Collect audit logs if enabled
             if (config.isEnableAuditLog) {
                 collectAuditLogs(context, accessToken)
             }
-            
         } catch (e: Exception) {
             logger.error("Enterprise integration failed", e)
             // Don't fail authentication, just log the error
         }
     }
-    
-    private fun syncUserGroups(context: BrokeredIdentityContext, accessToken: String) {
+
+    private fun syncUserGroups(
+        context: BrokeredIdentityContext,
+        accessToken: String,
+    ) {
         try {
             val userEmail = context.email ?: return
-            
+
             // Get user's group memberships from Admin SDK
             val groupsUrl = "${GoogleConstant.ADMIN_GROUPS_URL}?domain=${config.serviceAccountDomain}&userKey=$userEmail"
-            val groupsResponse = SimpleHttp.doGet(groupsUrl, session)
-                .header("Authorization", "Bearer $accessToken")
-                .asJson()
-            
+            val groupsResponse =
+                SimpleHttp
+                    .doGet(groupsUrl, session)
+                    .header("Authorization", "Bearer $accessToken")
+                    .asJson()
+
             val groups = groupsResponse.get("groups")
             if (groups?.isArray == true && groups.size() > 0) {
                 val groupNames = mutableListOf<String>()
                 val groupEmails = mutableListOf<String>()
-                
+
                 for (group in groups) {
                     val groupName = group.get("name")?.asText()
                     val groupEmail = group.get("email")?.asText()
                     val groupDescription = group.get("description")?.asText()
-                    
+
                     if (groupName != null) {
                         groupNames.add(groupName)
                     }
                     if (groupEmail != null) {
                         groupEmails.add(groupEmail)
                     }
-                    
+
                     // Add detailed group info
                     if (groupName != null && groupEmail != null) {
-                        context.contextData["group_${groupEmail}"] = mapOf(
-                            "name" to groupName,
-                            "email" to groupEmail,
-                            "description" to (groupDescription ?: ""),
-                            "type" to (group.get("type")?.asText() ?: ""),
-                            "adminCreated" to (group.get("adminCreated")?.asBoolean()?.toString() ?: "false")
-                        ).toString()
+                        context.contextData["group_$groupEmail"] =
+                            mapOf(
+                                "name" to groupName,
+                                "email" to groupEmail,
+                                "description" to (groupDescription ?: ""),
+                                "type" to (group.get("type")?.asText() ?: ""),
+                                "adminCreated" to (group.get("adminCreated")?.asBoolean()?.toString() ?: "false"),
+                            ).toString()
                     }
                 }
-                
+
                 if (groupNames.isNotEmpty()) {
                     context.contextData["google_groups"] = groupNames.joinToString(",")
                     context.contextData["google_group_emails"] = groupEmails.joinToString(",")
                     context.contextData["google_groups_count"] = groups.size().toString()
                 }
             }
-            
+
             logger.debugf("Synced %d groups for user: %s", groups?.size() ?: 0, userEmail)
-            
         } catch (e: Exception) {
             logger.warn("Failed to sync user groups", e)
         }
     }
-    
-    private fun syncOrganizationalUnit(context: BrokeredIdentityContext, accessToken: String) {
+
+    private fun syncOrganizationalUnit(
+        context: BrokeredIdentityContext,
+        accessToken: String,
+    ) {
         try {
             val userEmail = context.email ?: return
-            
+
             // Get user details including organizational unit
             val userUrl = "${GoogleConstant.ADMIN_USERS_URL}/$userEmail?projection=full"
-            val userResponse = SimpleHttp.doGet(userUrl, session)
-                .header("Authorization", "Bearer $accessToken")
-                .asJson()
-            
+            val userResponse =
+                SimpleHttp
+                    .doGet(userUrl, session)
+                    .header("Authorization", "Bearer $accessToken")
+                    .asJson()
+
             // Extract organizational unit path
             val orgUnitPath = userResponse.get("orgUnitPath")?.asText()
             if (orgUnitPath != null) {
                 context.contextData["org_unit_path"] = orgUnitPath
-                
+
                 // Get detailed org unit information
                 val orgUnitUrl = "${GoogleConstant.ADMIN_ORGUNIT_URL}?orgUnitPath=${orgUnitPath.replace("/", "%2F")}"
-                val orgUnitResponse = SimpleHttp.doGet(orgUnitUrl, session)
-                    .header("Authorization", "Bearer $accessToken")
-                    .asJson()
-                
+                val orgUnitResponse =
+                    SimpleHttp
+                        .doGet(orgUnitUrl, session)
+                        .header("Authorization", "Bearer $accessToken")
+                        .asJson()
+
                 val orgUnit = orgUnitResponse.get("organizationUnits")?.get(0)
                 if (orgUnit != null) {
                     orgUnit.get("name")?.asText()?.let { context.contextData["org_unit_name"] = it }
@@ -587,64 +622,69 @@ class GoogleIdentityProvider(
                     orgUnit.get("parentOrgUnitPath")?.asText()?.let { context.contextData["parent_org_unit_path"] = it }
                 }
             }
-            
+
             // Extract additional user properties
-            userResponse.get("suspended")?.asBoolean()?.let { 
-                context.contextData["account_suspended"] = it.toString() 
+            userResponse.get("suspended")?.asBoolean()?.let {
+                context.contextData["account_suspended"] = it.toString()
             }
-            userResponse.get("isAdmin")?.asBoolean()?.let { 
-                context.contextData["is_admin"] = it.toString() 
+            userResponse.get("isAdmin")?.asBoolean()?.let {
+                context.contextData["is_admin"] = it.toString()
             }
-            userResponse.get("isDelegatedAdmin")?.asBoolean()?.let { 
-                context.contextData["is_delegated_admin"] = it.toString() 
+            userResponse.get("isDelegatedAdmin")?.asBoolean()?.let {
+                context.contextData["is_delegated_admin"] = it.toString()
             }
-            userResponse.get("lastLoginTime")?.asText()?.let { 
-                context.contextData["last_login_time"] = it 
+            userResponse.get("lastLoginTime")?.asText()?.let {
+                context.contextData["last_login_time"] = it
             }
-            userResponse.get("creationTime")?.asText()?.let { 
-                context.contextData["account_creation_time"] = it 
+            userResponse.get("creationTime")?.asText()?.let {
+                context.contextData["account_creation_time"] = it
             }
-            
+
             logger.debugf("Synced organizational unit for user: %s, org unit: %s", userEmail, orgUnitPath)
-            
         } catch (e: Exception) {
             logger.warn("Failed to sync organizational unit", e)
         }
     }
-    
-    private fun syncAccountStatus(context: BrokeredIdentityContext, accessToken: String) {
+
+    private fun syncAccountStatus(
+        context: BrokeredIdentityContext,
+        accessToken: String,
+    ) {
         try {
             val userEmail = context.email ?: return
-            
+
             // Get real-time account status
             val userUrl = "${GoogleConstant.ADMIN_USERS_URL}/$userEmail?projection=basic"
-            val userResponse = SimpleHttp.doGet(userUrl, session)
-                .header("Authorization", "Bearer $accessToken")
-                .asJson()
-            
+            val userResponse =
+                SimpleHttp
+                    .doGet(userUrl, session)
+                    .header("Authorization", "Bearer $accessToken")
+                    .asJson()
+
             val suspended = userResponse.get("suspended")?.asBoolean() ?: false
             val suspensionReason = userResponse.get("suspensionReason")?.asText()
             val changePasswordAtNextLogin = userResponse.get("changePasswordAtNextLogin")?.asBoolean() ?: false
-            
+
             // Update context with real-time status
             context.contextData["real_time_suspended"] = suspended.toString()
             context.contextData["account_active"] = (!suspended).toString()
-            
+
             if (suspensionReason != null) {
                 context.contextData["suspension_reason"] = suspensionReason
             }
-            
+
             context.contextData["password_change_required"] = changePasswordAtNextLogin.toString()
             context.contextData["sync_timestamp"] = System.currentTimeMillis().toString()
-            
+
             // Throw exception if account is suspended and suspension should block access
             if (suspended) {
                 logger.warnf("User account is suspended: %s, reason: %s", userEmail, suspensionReason)
-                throw IdentityBrokerException("Google Workspace account is suspended: ${suspensionReason ?: "Unknown reason"}")
+                throw IdentityBrokerException(
+                    "Google Workspace account is suspended: ${suspensionReason ?: "Unknown reason"}",
+                )
             }
-            
+
             logger.debugf("Account status synced for user: %s, active: %s", userEmail, !suspended)
-            
         } catch (e: Exception) {
             if (e is IdentityBrokerException) {
                 throw e // Re-throw suspension exceptions
@@ -652,39 +692,52 @@ class GoogleIdentityProvider(
             logger.warn("Failed to sync account status", e)
         }
     }
-    
-    private fun collectAuditLogs(context: BrokeredIdentityContext, accessToken: String) {
+
+    private fun collectAuditLogs(
+        context: BrokeredIdentityContext,
+        accessToken: String,
+    ) {
         try {
             val userEmail = context.email ?: return
-            
+
             // Collect recent login activities
-            val auditUrl = GoogleConstant.AUDIT_ACTIVITIES_URL
-                .replace("{userKey}", userEmail)
-                .replace("{applicationName}", "login") + "?maxResults=10"
-            
-            val auditResponse = SimpleHttp.doGet(auditUrl, session)
-                .header("Authorization", "Bearer $accessToken")
-                .asJson()
-            
+            val auditUrl =
+                GoogleConstant.AUDIT_ACTIVITIES_URL
+                    .replace("{userKey}", userEmail)
+                    .replace("{applicationName}", "login") + "?maxResults=10"
+
+            val auditResponse =
+                SimpleHttp
+                    .doGet(auditUrl, session)
+                    .header("Authorization", "Bearer $accessToken")
+                    .asJson()
+
             val activities = auditResponse.get("items")
             if (activities?.isArray == true && activities.size() > 0) {
                 val recentActivities = mutableListOf<String>()
-                
+
                 for (activity in activities) {
                     val eventTime = activity.get("id")?.get("time")?.asText()
-                    val eventName = activity.get("events")?.get(0)?.get("name")?.asText()
+                    val eventName =
+                        activity
+                            .get("events")
+                            ?.get(0)
+                            ?.get("name")
+                            ?.asText()
                     val ipAddress = activity.get("ipAddress")?.asText()
-                    
+
                     if (eventTime != null && eventName != null) {
-                        recentActivities.add("$eventTime: $eventName" + if (ipAddress != null) " from $ipAddress" else "")
+                        recentActivities.add(
+                            "$eventTime: $eventName" + if (ipAddress != null) " from $ipAddress" else "",
+                        )
                     }
                 }
-                
+
                 if (recentActivities.isNotEmpty()) {
                     context.contextData["recent_audit_activities"] = recentActivities.joinToString("; ")
                     context.contextData["audit_activities_count"] = activities.size().toString()
                 }
-                
+
                 // Extract first and last login info
                 if (activities.size() > 0) {
                     val latestActivity = activities[0]
@@ -696,38 +749,37 @@ class GoogleIdentityProvider(
                     }
                 }
             }
-            
+
             logger.debugf("Collected %d audit log entries for user: %s", activities?.size() ?: 0, userEmail)
-            
         } catch (e: Exception) {
             logger.warn("Failed to collect audit logs", e)
         }
     }
 
     // Security Enhancement Methods
-    
+
     private fun checkRateLimit() {
         val clientIp = getClientIpAddress()
         val currentTime = System.currentTimeMillis()
-        
+
         val rateLimitInfo = rateLimitMap.computeIfAbsent(clientIp) { RateLimitInfo() }
-        
+
         synchronized(rateLimitInfo) {
             // Reset counter if window has passed
             if (currentTime - rateLimitInfo.windowStart > RATE_LIMIT_WINDOW) {
                 rateLimitInfo.requestCount = 0
                 rateLimitInfo.windowStart = currentTime
             }
-            
+
             rateLimitInfo.requestCount++
-            
+
             if (rateLimitInfo.requestCount > MAX_REQUESTS_PER_MINUTE) {
                 logger.warnf("Rate limit exceeded for IP: %s", clientIp)
                 throw IdentityBrokerException("Rate limit exceeded. Please try again later.")
             }
         }
     }
-    
+
     private fun getClientIpAddress(): String {
         // Try to get real client IP from headers
         val headers = listOf("X-Forwarded-For", "X-Real-IP", "X-Forwarded-Proto")
@@ -739,133 +791,142 @@ class GoogleIdentityProvider(
         }
         return session.getContext().getConnection().remoteAddr ?: "unknown"
     }
-    
+
     private fun validateStateParameter() {
         // Enhanced state parameter validation
         try {
-            val stateParam = session.getContext().getUri().getQueryParameters()["state"]?.firstOrNull()
+            val stateParam =
+                session
+                    .getContext()
+                    .getUri()
+                    .getQueryParameters()["state"]
+                    ?.firstOrNull()
             if (stateParam.isNullOrBlank()) {
                 logger.debugf("Missing state parameter - skipping validation")
                 return
             }
-            
+
             val storedState = session.getAttribute("oauth_state") as? String
             if (storedState.isNullOrBlank()) {
                 logger.debugf("No stored state found - skipping validation")
                 return
             }
-            
+
             // Verify state parameter matches stored value
             if (stateParam != storedState) {
                 logger.warnf("State parameter mismatch. Expected: %s, Got: %s", storedState, stateParam)
                 throw IdentityBrokerException("Invalid state parameter - possible CSRF attack")
             }
-            
+
             // Clean up stored state
             session.removeAttribute("oauth_state")
             logger.debugf("State parameter validation successful")
-            
         } catch (e: Exception) {
             logger.warn("State parameter validation failed", e)
             // Don't fail the entire authentication flow for state validation issues
         }
     }
-    
+
     private fun verifyIdToken(idToken: String) {
         try {
             val parts = idToken.split(".")
             if (parts.size != 3) {
                 throw IdentityBrokerException("Invalid ID token format")
             }
-            
+
             // Decode header and payload
             val headerJson = String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8)
             val payloadJson = String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8)
-            
+
             val header = JsonSerialization.readValue(headerJson, JsonNode::class.java)
             val payload = JsonSerialization.readValue(payloadJson, JsonNode::class.java)
-            
+
             // Verify signature
             val keyId = header.get("kid")?.asText()
             if (keyId.isNullOrBlank()) {
                 throw IdentityBrokerException("Missing key ID in ID token header")
             }
-            
+
             val publicKey = getPublicKey(keyId)
             if (!verifySignature(parts[0] + "." + parts[1], parts[2], publicKey)) {
                 throw IdentityBrokerException("ID token signature verification failed")
             }
-            
+
             // Verify claims
             verifyTokenClaims(payload)
-            
+
             logger.debugf("ID token verified successfully")
-            
         } catch (e: Exception) {
             logger.error("ID token verification failed", e)
             throw IdentityBrokerException("ID token verification failed", e)
         }
     }
-    
+
     private fun getPublicKey(keyId: String): RSAPublicKey {
         val currentTime = System.currentTimeMillis()
-        
+
         // Check cache first
         val cachedKey = jwksCache[keyId]
         val cacheExpiry = jwksCacheExpiry[keyId]
-        
+
         if (cachedKey != null && cacheExpiry != null && currentTime < cacheExpiry) {
             return cachedKey
         }
-        
+
         // Fetch from JWKS endpoint
         try {
             val jwksResponse = SimpleHttp.doGet(GoogleConstant.JWKS_URL, session).asJson()
             val keys = jwksResponse.get("keys")
-            
+
             if (keys?.isArray == true) {
                 for (key in keys) {
                     val kid = key.get("kid")?.asText()
                     if (kid == keyId) {
                         val nValue = key.get("n")?.asText()
                         val eValue = key.get("e")?.asText()
-                        
+
                         if (nValue != null && eValue != null) {
                             val publicKey = createRSAPublicKey(nValue, eValue)
-                            
+
                             // Cache the key
                             jwksCache[keyId] = publicKey
                             jwksCacheExpiry[keyId] = currentTime + config.jwksCacheTtl
-                            
+
                             return publicKey
                         }
                     }
                 }
             }
-            
+
             throw IdentityBrokerException("Public key not found for key ID: $keyId")
-            
         } catch (e: Exception) {
             logger.error("Failed to fetch JWKS", e)
             throw IdentityBrokerException("Failed to fetch Google public keys", e)
         }
     }
-    
-    private fun createRSAPublicKey(nValue: String, eValue: String): RSAPublicKey {
+
+    private fun createRSAPublicKey(
+        nValue: String,
+        eValue: String,
+    ): RSAPublicKey {
         val nBytes = Base64.getUrlDecoder().decode(nValue)
         val eBytes = Base64.getUrlDecoder().decode(eValue)
-        
+
         val modulus = java.math.BigInteger(1, nBytes)
         val exponent = java.math.BigInteger(1, eBytes)
-        
+
         val keySpec = java.security.spec.RSAPublicKeySpec(modulus, exponent)
         val keyFactory = java.security.KeyFactory.getInstance("RSA")
-        
+
         return keyFactory.generatePublic(keySpec) as RSAPublicKey
     }
-    
-    private fun verifySignature(data: String, signature: String, publicKey: RSAPublicKey): Boolean {
-        return try {
+
+    private fun verifySignature(
+        data: String,
+        signature: String,
+        publicKey: RSAPublicKey,
+    ): Boolean =
+        try {
             val signatureBytes = Base64.getUrlDecoder().decode(signature)
             val verifier = Signature.getInstance("SHA256withRSA")
             verifier.initVerify(publicKey)
@@ -875,33 +936,32 @@ class GoogleIdentityProvider(
             logger.error("Signature verification failed", e)
             false
         }
-    }
-    
+
     private fun verifyTokenClaims(payload: JsonNode) {
         // Verify issuer
         val issuer = payload.get("iss")?.asText()
         if (issuer != "https://accounts.google.com") {
             throw IdentityBrokerException("Invalid issuer: $issuer")
         }
-        
+
         // Verify audience (client ID)
         val audience = payload.get("aud")?.asText()
         if (audience != config.clientId) {
             throw IdentityBrokerException("Invalid audience: $audience")
         }
-        
+
         // Verify expiration
         val exp = payload.get("exp")?.asLong()
         if (exp == null || Instant.now().epochSecond >= exp) {
             throw IdentityBrokerException("Token has expired")
         }
-        
+
         // Verify not before
         val nbf = payload.get("nbf")?.asLong()
         if (nbf != null && Instant.now().epochSecond < nbf) {
             throw IdentityBrokerException("Token not yet valid")
         }
-        
+
         // Verify issued at (allow some clock skew)
         val iat = payload.get("iat")?.asLong()
         if (iat != null && Instant.now().epochSecond - iat > 3600) { // 1 hour max age
