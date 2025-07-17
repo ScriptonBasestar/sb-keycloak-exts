@@ -50,6 +50,6 @@ class GoogleIdentityProviderTest {
 
     @Test
     fun `should have correct profile URL in config`() {
-        assertThat(config.userInfoUrl).isEqualTo("https://www.googleapis.com/oauth2/v2/userinfo")
+        assertThat(config.userInfoUrl).isEqualTo("https://www.googleapis.com/oauth2/v3/userinfo")
     }
 }

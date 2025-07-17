@@ -26,7 +26,7 @@ class GoogleConstantTest {
 
     @Test
     fun `profileUrl should be valid Google userinfo URL`() {
-        assertThat(GoogleConstant.profileUrl).isEqualTo("https://www.googleapis.com/oauth2/v2/userinfo")
+        assertThat(GoogleConstant.profileUrl).isEqualTo("https://www.googleapis.com/oauth2/v3/userinfo")
     }
 
     @Test

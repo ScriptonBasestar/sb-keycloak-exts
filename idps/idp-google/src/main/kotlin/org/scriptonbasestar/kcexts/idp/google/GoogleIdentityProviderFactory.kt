@@ -11,9 +11,7 @@ class GoogleIdentityProviderFactory :
     override fun create(
         session: KeycloakSession,
         model: IdentityProviderModel,
-    ): GoogleIdentityProvider {
-        return GoogleIdentityProvider(session, GoogleIdentityProviderConfig(model))
-    }
+    ): GoogleIdentityProvider = GoogleIdentityProvider(session, GoogleIdentityProviderConfig(model))
 
     override fun getId(): String = GoogleConstant.providerId
 
