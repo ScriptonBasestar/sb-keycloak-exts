@@ -17,6 +17,11 @@ configurations {
     integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
+// Duplicate handling strategy for processing resources
+tasks.withType(ProcessResources) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 dependencies {
     // Kafka Dependencies
     bundleLib libs.kafka.clients
@@ -57,3 +62,85 @@ task integrationTest(type: Test) {
 }
 
 check.dependsOn integrationTest
+
+// Production Build Configuration
+apply plugin: 'com.github.johnrengelman.shadow'
+
+shadowJar {
+    archiveClassifier.set('')
+    archiveBaseName.set('keycloak-kafka-event-listener')
+    
+    // Keycloak 플러그인 규칙에 따른 JAR 구성
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    exclude 'META-INF/MANIFEST.MF'
+    
+    // Kafka 클라이언트와 Jackson 라이브러리 포함
+    dependencies {
+        include(dependency('org.apache.kafka:kafka-clients'))
+        include(dependency('com.fasterxml.jackson.core:jackson-core'))
+        include(dependency('com.fasterxml.jackson.core:jackson-databind'))
+        include(dependency('com.fasterxml.jackson.module:jackson-module-kotlin'))
+    }
+    
+    // Manifest 설정
+    manifest {
+        attributes(
+            'Implementation-Title': 'Keycloak Kafka Event Listener',
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'ScriptonBaseStar',
+            'Built-By': System.getProperty('user.name'),
+            'Build-Date': new Date().format('yyyy-MM-dd HH:mm:ss'),
+            'Keycloak-Version': libs.versions.keycloak.get()
+        )
+    }
+}
+
+// Production Build Task
+task productionBuild {
+    group = 'build'
+    description = 'Builds production-ready JAR for Keycloak deployment'
+    
+    dependsOn clean, test, integrationTest, shadowJar
+    
+    doLast {
+        def jarFile = shadowJar.archiveFile.get().asFile
+        def checksumFile = new File(jarFile.parent, "${jarFile.name}.sha256")
+        
+        // SHA256 체크섬 생성
+        def checksum = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(jarFile.bytes)
+            .encodeHex()
+            .toString()
+        
+        checksumFile.text = "${checksum}  ${jarFile.name}\n"
+        
+        println "Production JAR built: ${jarFile.absolutePath}"
+        println "Checksum: ${checksum}"
+        println "Size: ${jarFile.length()} bytes"
+    }
+}
+
+// JAR 서명을 위한 태스크 (선택사항)
+task signJar(type: Sign) {
+    group = 'build'
+    description = 'Signs the production JAR'
+    
+    sign shadowJar
+}
+
+// 배포를 위한 아티팩트 준비
+task prepareDistribution(type: Copy) {
+    group = 'distribution'
+    description = 'Prepares distribution artifacts'
+    
+    dependsOn productionBuild
+    
+    from shadowJar.archiveFile
+    from "${shadowJar.archiveFile.get().asFile.parent}/${shadowJar.archiveFile.get().asFile.name}.sha256"
+    from file('README.md')
+    from file('LICENSE') 
+    
+    into "${buildDir}/distribution"
+}
