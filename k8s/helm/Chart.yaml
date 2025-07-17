@@ -1,0 +1,30 @@
+apiVersion: v2
+name: keycloak-kafka-event-listener
+description: A Helm chart for Keycloak with Kafka Event Listener plugin
+type: application
+version: 0.0.2
+appVersion: "26.3.1"
+home: https://github.com/scriptonbasestar/sb-keycloak-exts
+sources:
+  - https://github.com/scriptonbasestar/sb-keycloak-exts
+maintainers:
+  - name: ScriptonBaseStar
+    email: scriptonbasestar@gmail.com
+keywords:
+  - keycloak
+  - kafka
+  - event-listener
+  - authentication
+  - identity
+  - sso
+annotations:
+  category: Identity and Access Management
+dependencies:
+  - name: postgresql
+    version: 12.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: kafka
+    version: 26.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled

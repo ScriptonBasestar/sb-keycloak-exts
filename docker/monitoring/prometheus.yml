@@ -1,0 +1,82 @@
+# Prometheus configuration for Keycloak Kafka Event Listener
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'keycloak-kafka-monitor'
+    environment: 'production'
+
+# Alert manager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - 'alertmanager:9093'
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Keycloak metrics
+  - job_name: 'keycloak'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['keycloak:9000']
+        labels:
+          service: 'keycloak'
+          component: 'server'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}'
+
+  # Kafka Event Listener metrics
+  - job_name: 'kafka-event-listener'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['keycloak:9090']
+        labels:
+          service: 'keycloak'
+          component: 'kafka-event-listener'
+
+  # Kafka metrics (if JMX exporter is enabled)
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9308']
+        labels:
+          service: 'kafka'
+          component: 'broker'
+
+  # PostgreSQL metrics (if postgres_exporter is enabled)
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgresql'
+          component: 'database'
+
+  # Node exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'system'
+          component: 'node'
+
+# Remote write configuration (optional)
+# remote_write:
+#   - url: 'http://remote-prometheus:9090/api/v1/write'
+#     write_relabel_configs:
+#       - source_labels: [__name__]
+#         regex: 'keycloak_kafka_.*'
+#         action: keep

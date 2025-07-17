@@ -1,0 +1,301 @@
+version: '3.8'
+
+# Keycloak with Kafka Event Listener - Docker Compose
+# Includes Keycloak, Kafka, Zookeeper, PostgreSQL, and monitoring stack
+
+services:
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    container_name: keycloak-kafka-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_INIT_LIMIT: 5
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo 'ruok' | nc localhost 2181"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka
+    container_name: keycloak-kafka-broker
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+      KAFKA_LOG_SEGMENT_BYTES: 536870912
+      KAFKA_LOG_CLEANUP_POLICY: delete
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:29092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: keycloak-postgres
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Keycloak with Kafka Event Listener
+  keycloak:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: keycloak-kafka-server
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      # Database configuration
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KC_DB_SCHEMA: public
+      
+      # Keycloak configuration
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: localhost
+      KC_HTTP_ENABLED: true
+      KC_PROXY: edge
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HEALTH_ENABLED: true
+      KC_METRICS_ENABLED: true
+      
+      # Kafka Event Listener configuration
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_USER_EVENTS_TOPIC: keycloak.user.events
+      KAFKA_ADMIN_EVENTS_TOPIC: keycloak.admin.events
+      KAFKA_USER_EVENTS_ENABLED: true
+      KAFKA_ADMIN_EVENTS_ENABLED: true
+      KAFKA_INCLUDED_EVENT_TYPES: LOGIN,LOGOUT,REGISTER,UPDATE_PROFILE,UPDATE_PASSWORD,LOGIN_ERROR,REGISTER_ERROR
+      KAFKA_INCLUDED_ADMIN_OPERATIONS: CREATE,UPDATE,DELETE,ACTION
+      KAFKA_SECURITY_PROTOCOL: PLAINTEXT
+      KAFKA_ACKS: 1
+      KAFKA_RETRIES: 3
+      KAFKA_BATCH_SIZE: 16384
+      KAFKA_LINGER_MS: 5
+      KAFKA_COMPRESSION_TYPE: snappy
+      
+      # JVM configuration
+      JVM_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+      
+      # Health check configuration
+      WAIT_FOR_DEPENDENCIES: true
+      KAFKA_ENABLED: true
+      KAFKA_REQUIRED: false
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+      - "9000:9000"
+      - "9010:9010"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./docker/config:/opt/keycloak/conf/custom
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["/opt/keycloak/bin/health-check.sh", "quick"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  # Kafka UI (optional - for development)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: keycloak-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      SERVER_SERVLET_CONTEXT_PATH: /kafka-ui
+    ports:
+      - "8081:8080"
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    profiles:
+      - dev
+      - monitoring
+
+  # Prometheus (monitoring)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: keycloak-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./docker/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Grafana (monitoring)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: keycloak-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./docker/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3000:3000"
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Elasticsearch (logging)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: keycloak-elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=keycloak-logs
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    profiles:
+      - logging
+
+  # Kibana (logging)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: keycloak-kibana
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    profiles:
+      - logging
+
+  # Logstash (logging)
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: keycloak-logstash
+    depends_on:
+      - elasticsearch
+      - kafka
+    volumes:
+      - ./docker/logging/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    profiles:
+      - logging
+
+volumes:
+  postgres_data:
+    driver: local
+  keycloak_data:
+    driver: local
+  kafka_data:
+    driver: local
+  zookeeper_data:
+    driver: local
+  zookeeper_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+
+networks:
+  keycloak-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

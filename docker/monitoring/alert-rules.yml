@@ -1,0 +1,181 @@
+# Keycloak Kafka Event Listener Alert Rules
+groups:
+  - name: keycloak-kafka-events
+    rules:
+      # High error rate alert
+      - alert: KafkaEventListenerHighErrorRate
+        expr: |
+          (
+            sum(rate(keycloak_kafka_events_failed_total[5m])) 
+            / 
+            sum(rate(keycloak_kafka_events_sent_total[5m]) + rate(keycloak_kafka_events_failed_total[5m]))
+          ) * 100 > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: keycloak
+          component: kafka-event-listener
+        annotations:
+          summary: "High error rate in Kafka Event Listener"
+          description: "Error rate is {{ $value }}% which is above the 5% threshold for more than 2 minutes"
+          runbook_url: "https://github.com/scriptonbasestar/sb-keycloak-exts/docs/runbook.md#high-error-rate"
+
+      # Kafka connection down
+      - alert: KafkaConnectionDown
+        expr: keycloak_kafka_connection_status == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: keycloak
+          component: kafka-event-listener
+        annotations:
+          summary: "Kafka connection is down"
+          description: "Keycloak cannot connect to Kafka cluster"
+          runbook_url: "https://github.com/scriptonbasestar/sb-keycloak-exts/docs/runbook.md#kafka-connection-down"
+
+      # High producer queue size
+      - alert: KafkaProducerQueueHigh
+        expr: keycloak_kafka_producer_queue_size > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+          component: kafka-event-listener
+        annotations:
+          summary: "Kafka producer queue is growing"
+          description: "Producer queue size is {{ $value }} events, indicating potential backpressure"
+          runbook_url: "https://github.com/scriptonbasestar/sb-keycloak-exts/docs/runbook.md#high-queue-size"
+
+      # High event processing latency
+      - alert: HighEventProcessingLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(keycloak_kafka_event_processing_duration_bucket[5m])
+          ) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+          component: kafka-event-listener
+        annotations:
+          summary: "High event processing latency"
+          description: "95th percentile event processing time is {{ $value }}ms"
+          runbook_url: "https://github.com/scriptonbasestar/sb-keycloak-exts/docs/runbook.md#high-latency"
+
+      # Low event throughput
+      - alert: LowEventThroughput
+        expr: sum(rate(keycloak_kafka_events_sent_total[5m])) < 0.1
+        for: 10m
+        labels:
+          severity: info
+          service: keycloak
+          component: kafka-event-listener
+        annotations:
+          summary: "Low event throughput detected"
+          description: "Event throughput is {{ $value }} events/second, which might indicate low activity or issues"
+
+      # Kafka consumer lag
+      - alert: HighKafkaConsumerLag
+        expr: keycloak_kafka_lag > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+          component: kafka-event-listener
+        annotations:
+          summary: "High Kafka consumer lag"
+          description: "Consumer lag is {{ $value }} messages on topic {{ $labels.topic }} partition {{ $labels.partition }}"
+
+      # No events for extended period
+      - alert: NoEventsReceived
+        expr: |
+          absent_over_time(
+            sum(rate(keycloak_kafka_events_sent_total[1m]))[30m:]
+          )
+        for: 30m
+        labels:
+          severity: warning
+          service: keycloak
+          component: kafka-event-listener
+        annotations:
+          summary: "No events received for 30 minutes"
+          description: "Event listener hasn't processed any events for 30 minutes"
+
+  - name: system-resources
+    rules:
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            sum(jvm_memory_used_bytes{area="heap"}) 
+            / 
+            sum(jvm_memory_max_bytes{area="heap"})
+          ) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+          component: jvm
+        annotations:
+          summary: "High JVM heap memory usage"
+          description: "JVM heap memory usage is {{ $value }}%"
+
+      # High CPU usage
+      - alert: HighCpuUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+          component: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}%"
+
+      # GC time percentage
+      - alert: HighGCTime
+        expr: |
+          (
+            rate(jvm_gc_collection_seconds_sum[5m]) 
+            / 
+            rate(jvm_gc_collection_seconds_count[5m])
+          ) * 100 > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+          component: jvm
+        annotations:
+          summary: "High garbage collection time"
+          description: "GC time percentage is {{ $value }}%"
+
+  - name: kafka-cluster
+    rules:
+      # Kafka broker down
+      - alert: KafkaBrokerDown
+        expr: up{job="kafka"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: kafka
+          component: broker
+        annotations:
+          summary: "Kafka broker is down"
+          description: "Kafka broker {{ $labels.instance }} is not responding"
+
+      # High disk usage on Kafka
+      - alert: KafkaHighDiskUsage
+        expr: |
+          (
+            kafka_log_size_bytes 
+            / 
+            kafka_log_max_size_bytes
+          ) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: kafka
+          component: storage
+        annotations:
+          summary: "High disk usage on Kafka"
+          description: "Kafka disk usage is {{ $value }}% on {{ $labels.topic }}"

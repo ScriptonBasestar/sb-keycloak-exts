@@ -1,0 +1,52 @@
+# Kafka Configuration Properties Template
+# Additional Kafka client configuration for advanced use cases
+
+# Basic connection settings
+bootstrap.servers=${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}
+client.id=${KAFKA_CLIENT_ID:-keycloak-event-listener}
+
+# Security settings
+security.protocol=${KAFKA_SECURITY_PROTOCOL:-PLAINTEXT}
+sasl.mechanism=${KAFKA_SASL_MECHANISM:-PLAIN}
+sasl.jaas.config=${KAFKA_SASL_JAAS_CONFIG:-}
+
+# SSL/TLS settings
+ssl.truststore.location=${KAFKA_SSL_TRUSTSTORE_LOCATION:-}
+ssl.truststore.password=${KAFKA_SSL_TRUSTSTORE_PASSWORD:-}
+ssl.truststore.type=${KAFKA_SSL_TRUSTSTORE_TYPE:-JKS}
+ssl.keystore.location=${KAFKA_SSL_KEYSTORE_LOCATION:-}
+ssl.keystore.password=${KAFKA_SSL_KEYSTORE_PASSWORD:-}
+ssl.keystore.type=${KAFKA_SSL_KEYSTORE_TYPE:-JKS}
+ssl.key.password=${KAFKA_SSL_KEY_PASSWORD:-}
+ssl.endpoint.identification.algorithm=${KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM:-https}
+
+# Producer configuration
+acks=${KAFKA_ACKS:-1}
+retries=${KAFKA_RETRIES:-3}
+batch.size=${KAFKA_BATCH_SIZE:-16384}
+linger.ms=${KAFKA_LINGER_MS:-5}
+buffer.memory=${KAFKA_BUFFER_MEMORY:-33554432}
+compression.type=${KAFKA_COMPRESSION_TYPE:-snappy}
+max.request.size=${KAFKA_MAX_REQUEST_SIZE:-1048576}
+enable.idempotence=${KAFKA_ENABLE_IDEMPOTENCE:-false}
+max.in.flight.requests.per.connection=${KAFKA_MAX_IN_FLIGHT_REQUESTS:-5}
+
+# Timeout and retry settings
+request.timeout.ms=${KAFKA_REQUEST_TIMEOUT_MS:-30000}
+delivery.timeout.ms=${KAFKA_DELIVERY_TIMEOUT_MS:-120000}
+retry.backoff.ms=${KAFKA_RETRY_BACKOFF_MS:-100}
+reconnect.backoff.ms=${KAFKA_RECONNECT_BACKOFF_MS:-50}
+reconnect.backoff.max.ms=${KAFKA_RECONNECT_BACKOFF_MAX_MS:-1000}
+
+# Metrics and monitoring
+metrics.recording.level=${KAFKA_METRICS_RECORDING_LEVEL:-INFO}
+metrics.sample.window.ms=${KAFKA_METRICS_SAMPLE_WINDOW_MS:-30000}
+metrics.num.samples=${KAFKA_METRICS_NUM_SAMPLES:-2}
+
+# Network settings
+send.buffer.bytes=${KAFKA_SEND_BUFFER_BYTES:-131072}
+receive.buffer.bytes=${KAFKA_RECEIVE_BUFFER_BYTES:-65536}
+connections.max.idle.ms=${KAFKA_CONNECTIONS_MAX_IDLE_MS:-540000}
+
+# Partitioning
+partitioner.class=${KAFKA_PARTITIONER_CLASS:-org.apache.kafka.clients.producer.internals.DefaultPartitioner}

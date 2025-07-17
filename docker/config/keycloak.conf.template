@@ -1,0 +1,72 @@
+# Keycloak Configuration Template
+# This file will be processed by the entrypoint script to substitute environment variables
+
+# Database configuration
+db=${KC_DB:-dev-file}
+db-url-host=${KC_DB_URL_HOST:-localhost}
+db-url-database=${KC_DB_URL_DATABASE:-keycloak}
+db-username=${KC_DB_USERNAME:-keycloak}
+db-password=${KC_DB_PASSWORD:-password}
+db-schema=${KC_DB_SCHEMA:-public}
+
+# HTTP/HTTPS configuration
+http-enabled=${KC_HTTP_ENABLED:-false}
+http-port=${KC_HTTP_PORT:-8080}
+https-port=${KC_HTTPS_PORT:-8443}
+hostname=${KC_HOSTNAME:-localhost}
+hostname-strict=${KC_HOSTNAME_STRICT:-true}
+hostname-strict-https=${KC_HOSTNAME_STRICT_HTTPS:-true}
+
+# Proxy configuration
+proxy=${KC_PROXY:-none}
+proxy-headers=${KC_PROXY_HEADERS:-xforwarded}
+
+# Security configuration
+https-certificate-file=${KC_HTTPS_CERTIFICATE_FILE:-}
+https-certificate-key-file=${KC_HTTPS_CERTIFICATE_KEY_FILE:-}
+
+# Features
+features=${KC_FEATURES:-}
+
+# Health and metrics
+health-enabled=${KC_HEALTH_ENABLED:-false}
+metrics-enabled=${KC_METRICS_ENABLED:-false}
+
+# Kafka Event Listener Configuration
+kafka.bootstrap.servers=${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}
+kafka.user.events.topic=${KAFKA_USER_EVENTS_TOPIC:-keycloak.user.events}
+kafka.admin.events.topic=${KAFKA_ADMIN_EVENTS_TOPIC:-keycloak.admin.events}
+kafka.user.events.enabled=${KAFKA_USER_EVENTS_ENABLED:-true}
+kafka.admin.events.enabled=${KAFKA_ADMIN_EVENTS_ENABLED:-true}
+kafka.included.event.types=${KAFKA_INCLUDED_EVENT_TYPES:-LOGIN,LOGOUT,REGISTER,UPDATE_PROFILE,UPDATE_PASSWORD}
+kafka.included.admin.operations=${KAFKA_INCLUDED_ADMIN_OPERATIONS:-CREATE,UPDATE,DELETE}
+
+# Kafka Producer Configuration
+kafka.security.protocol=${KAFKA_SECURITY_PROTOCOL:-PLAINTEXT}
+kafka.sasl.mechanism=${KAFKA_SASL_MECHANISM:-PLAIN}
+kafka.sasl.jaas.config=${KAFKA_SASL_JAAS_CONFIG:-}
+kafka.ssl.truststore.location=${KAFKA_SSL_TRUSTSTORE_LOCATION:-}
+kafka.ssl.truststore.password=${KAFKA_SSL_TRUSTSTORE_PASSWORD:-}
+kafka.ssl.keystore.location=${KAFKA_SSL_KEYSTORE_LOCATION:-}
+kafka.ssl.keystore.password=${KAFKA_SSL_KEYSTORE_PASSWORD:-}
+
+# Performance tuning
+kafka.max.poll.records=${KAFKA_MAX_POLL_RECORDS:-500}
+kafka.batch.size=${KAFKA_BATCH_SIZE:-16384}
+kafka.linger.ms=${KAFKA_LINGER_MS:-5}
+kafka.buffer.memory=${KAFKA_BUFFER_MEMORY:-33554432}
+kafka.retries=${KAFKA_RETRIES:-3}
+kafka.acks=${KAFKA_ACKS:-1}
+kafka.compression.type=${KAFKA_COMPRESSION_TYPE:-snappy}
+kafka.max.request.size=${KAFKA_MAX_REQUEST_SIZE:-1048576}
+
+# Error handling
+kafka.enable.idempotence=${KAFKA_ENABLE_IDEMPOTENCE:-false}
+kafka.max.in.flight.requests.per.connection=${KAFKA_MAX_IN_FLIGHT_REQUESTS:-5}
+
+# Monitoring
+kafka.client.id=${KAFKA_CLIENT_ID:-keycloak-event-listener}
+kafka.metrics.recording.level=${KAFKA_METRICS_RECORDING_LEVEL:-INFO}
+
+# Development settings (remove in production)
+# kafka.debug=${KAFKA_DEBUG:-false}
