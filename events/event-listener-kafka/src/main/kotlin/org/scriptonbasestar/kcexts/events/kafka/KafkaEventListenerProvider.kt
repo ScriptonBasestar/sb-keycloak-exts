@@ -56,7 +56,7 @@ class KafkaEventListenerProvider(
             metrics.recordEventSent(
                 eventType = event.type.name,
                 realm = event.realmId ?: "unknown",
-                topic = config.userEventsTopic,
+                topic = config.eventTopic,
                 sizeBytes = json.toByteArray().size,
             )
             metrics.stopTimer(timerSample, event.type.name)
@@ -66,7 +66,7 @@ class KafkaEventListenerProvider(
             metrics.recordEventFailed(
                 eventType = event.type.name,
                 realm = event.realmId ?: "unknown",
-                topic = config.userEventsTopic,
+                topic = config.eventTopic,
                 errorType = e.javaClass.simpleName,
             )
             logger.error("Failed to process user event", e)
@@ -112,7 +112,7 @@ class KafkaEventListenerProvider(
             metrics.recordEventSent(
                 eventType = "ADMIN_${event.operationType.name}",
                 realm = event.realmId ?: "unknown",
-                topic = config.adminEventsTopic,
+                topic = config.adminEventTopic,
                 sizeBytes = json.toByteArray().size,
             )
             metrics.stopTimer(timerSample, "ADMIN_${event.operationType.name}")
@@ -122,7 +122,7 @@ class KafkaEventListenerProvider(
             metrics.recordEventFailed(
                 eventType = "ADMIN_${event.operationType.name}",
                 realm = event.realmId ?: "unknown",
-                topic = config.adminEventsTopic,
+                topic = config.adminEventTopic,
                 errorType = e.javaClass.simpleName,
             )
             logger.error("Failed to process admin event", e)
