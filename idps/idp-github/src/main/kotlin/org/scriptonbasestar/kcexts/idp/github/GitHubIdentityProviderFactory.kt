@@ -8,8 +8,10 @@ import org.keycloak.models.KeycloakSession
 class GitHubIdentityProviderFactory :
     AbstractIdentityProviderFactory<GitHubIdentityProvider>(),
     SocialIdentityProviderFactory<GitHubIdentityProvider> {
-
-    override fun create(session: KeycloakSession, model: IdentityProviderModel): GitHubIdentityProvider {
+    override fun create(
+        session: KeycloakSession,
+        model: IdentityProviderModel,
+    ): GitHubIdentityProvider {
         return GitHubIdentityProvider(session, GitHubIdentityProviderConfig(model))
     }
 

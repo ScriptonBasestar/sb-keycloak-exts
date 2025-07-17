@@ -59,24 +59,26 @@ class LineIdentityProviderTest {
 
     @Test
     fun `should handle LINE user profile structure`() {
-        val userProfile = mapOf(
-            "userId" to "U1234567890",
-            "displayName" to "Test User",
-            "pictureUrl" to "https://example.com/profile.jpg",
-            "statusMessage" to "Hello LINE"
-        )
-        
+        val userProfile =
+            mapOf(
+                "userId" to "U1234567890",
+                "displayName" to "Test User",
+                "pictureUrl" to "https://example.com/profile.jpg",
+                "statusMessage" to "Hello LINE",
+            )
+
         assertThat(userProfile["userId"]).isEqualTo("U1234567890")
         assertThat(userProfile["displayName"]).isEqualTo("Test User")
     }
 
     @Test
     fun `should handle missing email gracefully`() {
-        val userProfile = mapOf(
-            "userId" to "U1234567890",
-            "displayName" to "Test User"
-        )
-        
+        val userProfile =
+            mapOf(
+                "userId" to "U1234567890",
+                "displayName" to "Test User",
+            )
+
         assertThat(userProfile).containsKey("userId")
         assertThat(userProfile).doesNotContainKey("email")
     }
@@ -92,11 +94,12 @@ class LineIdentityProviderTest {
 
     @Test
     fun `should handle LINE specific error responses`() {
-        val errorResponse = mapOf(
-            "error" to "invalid_request",
-            "error_description" to "Invalid channel ID"
-        )
-        
+        val errorResponse =
+            mapOf(
+                "error" to "invalid_request",
+                "error_description" to "Invalid channel ID",
+            )
+
         assertThat(errorResponse["error"]).isEqualTo("invalid_request")
         assertThat(errorResponse["error_description"]).contains("channel ID")
     }

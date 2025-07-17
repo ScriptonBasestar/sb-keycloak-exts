@@ -32,7 +32,7 @@ class KakaoIdentityProviderFactoryTest {
     @Test
     fun `should create KakaoIdentityProvider instance`() {
         val provider = factory.create(mockSession, mockModel)
-        
+
         assertThat(provider).isNotNull
         assertThat(provider).isInstanceOf(KakaoIdentityProvider::class.java)
     }
@@ -40,7 +40,7 @@ class KakaoIdentityProviderFactoryTest {
     @Test
     fun `should create KakaoIdentityProviderConfig`() {
         val config = factory.createConfig()
-        
+
         assertThat(config).isNotNull
         assertThat(config).isInstanceOf(KakaoIdentityProviderConfig::class.java)
         assertThat(config.alias).isEqualTo("kakao")

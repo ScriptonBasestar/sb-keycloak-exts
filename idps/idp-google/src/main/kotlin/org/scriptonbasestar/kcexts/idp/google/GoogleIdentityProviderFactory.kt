@@ -8,8 +8,10 @@ import org.keycloak.models.KeycloakSession
 class GoogleIdentityProviderFactory :
     AbstractIdentityProviderFactory<GoogleIdentityProvider>(),
     SocialIdentityProviderFactory<GoogleIdentityProvider> {
-
-    override fun create(session: KeycloakSession, model: IdentityProviderModel): GoogleIdentityProvider {
+    override fun create(
+        session: KeycloakSession,
+        model: IdentityProviderModel,
+    ): GoogleIdentityProvider {
         return GoogleIdentityProvider(session, GoogleIdentityProviderConfig(model))
     }
 

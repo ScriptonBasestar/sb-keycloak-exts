@@ -17,22 +17,22 @@ import javax.crypto.spec.SecretKeySpec
  */
 class WebhookNotificationChannel(
     private val config: WebhookConfig,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
 ) : NotificationChannelImpl {
-    
     companion object {
         private val logger = Logger.getLogger(WebhookNotificationChannel::class.java)
     }
-    
-    private val httpClient: HttpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(config.connectionTimeoutSeconds.toLong()))
-        .build()
-    
+
+    private val httpClient: HttpClient =
+        HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(config.connectionTimeoutSeconds.toLong()))
+            .build()
+
     override fun sendNotification(notification: NotificationTask): NotificationResult {
         return try {
             val webhookPayload = createWebhookPayload(notification)
             val response = sendWebhookRequest(webhookPayload)
-            
+
             if (response.statusCode() in 200..299) {
                 logger.info("Webhook notification sent successfully for alert: ${notification.alert.rule.name}")
                 NotificationResult.Success("Webhook request successful: ${response.statusCode()}")
@@ -46,80 +46,94 @@ class WebhookNotificationChannel(
             NotificationResult.Failure("Failed to send webhook: ${e.message}")
         }
     }
-    
+
     private fun createWebhookPayload(notification: NotificationTask): WebhookPayload {
         val alert = notification.alert
         val rule = alert.rule
-        
+
         return WebhookPayload(
             version = "1.0",
             timestamp = System.currentTimeMillis(),
-            event = WebhookEvent(
-                type = when (notification.type) {
-                    NotificationType.TRIGGERED -> "alert.triggered"
-                    NotificationType.ESCALATED -> "alert.escalated"
-                    NotificationType.RESOLVED -> "alert.resolved"
-                },
-                source = "keycloak-kafka-event-listener",
-                environment = config.environment
-            ),
-            alert = WebhookAlert(
-                id = alert.id,
-                name = rule.name,
-                description = rule.description,
-                severity = rule.severity.toString(),
-                status = alert.status.toString(),
-                metric = WebhookMetric(
-                    name = rule.metric.toString(),
-                    currentValue = alert.currentValue,
-                    threshold = rule.threshold,
-                    condition = rule.condition.toString()
+            event =
+                WebhookEvent(
+                    type =
+                        when (notification.type) {
+                            NotificationType.TRIGGERED -> "alert.triggered"
+                            NotificationType.ESCALATED -> "alert.escalated"
+                            NotificationType.RESOLVED -> "alert.resolved"
+                        },
+                    source = "keycloak-kafka-event-listener",
+                    environment = config.environment,
                 ),
-                timestamps = WebhookTimestamps(
-                    triggeredAt = alert.triggeredAt.toString(),
-                    resolvedAt = alert.resolvedAt?.toString(),
-                    lastUpdated = alert.lastUpdated.toString()
+            alert =
+                WebhookAlert(
+                    id = alert.id,
+                    name = rule.name,
+                    description = rule.description,
+                    severity = rule.severity.toString(),
+                    status = alert.status.toString(),
+                    metric =
+                        WebhookMetric(
+                            name = rule.metric.toString(),
+                            currentValue = alert.currentValue,
+                            threshold = rule.threshold,
+                            condition = rule.condition.toString(),
+                        ),
+                    timestamps =
+                        WebhookTimestamps(
+                            triggeredAt = alert.triggeredAt.toString(),
+                            resolvedAt = alert.resolvedAt?.toString(),
+                            lastUpdated = alert.lastUpdated.toString(),
+                        ),
+                    labels = createLabels(rule, alert),
+                    annotations = createAnnotations(rule, alert, notification),
                 ),
-                labels = createLabels(rule, alert),
-                annotations = createAnnotations(rule, alert, notification)
-            ),
-            context = WebhookContext(
-                service = "keycloak-kafka-event-listener",
-                version = getServiceVersion(),
-                instance = getInstanceId(),
-                dashboardUrl = config.dashboardUrl,
-                runbookUrl = config.runbookUrl
-            )
+            context =
+                WebhookContext(
+                    service = "keycloak-kafka-event-listener",
+                    version = getServiceVersion(),
+                    instance = getInstanceId(),
+                    dashboardUrl = config.dashboardUrl,
+                    runbookUrl = config.runbookUrl,
+                ),
         )
     }
-    
-    private fun createLabels(rule: AlertRule, alert: AlertInstance): Map<String, String> {
+
+    private fun createLabels(
+        rule: AlertRule,
+        alert: AlertInstance,
+    ): Map<String, String> {
         return mapOf(
             "alertname" to rule.name,
             "severity" to rule.severity.toString(),
             "metric" to rule.metric.toString(),
             "service" to "keycloak-kafka-event-listener",
             "environment" to config.environment,
-            "team" to config.teamName
+            "team" to config.teamName,
         )
     }
-    
-    private fun createAnnotations(rule: AlertRule, alert: AlertInstance, notification: NotificationTask): Map<String, String> {
+
+    private fun createAnnotations(
+        rule: AlertRule,
+        alert: AlertInstance,
+        notification: NotificationTask,
+    ): Map<String, String> {
         val annotations = mutableMapOf<String, String>()
-        
-        annotations["summary"] = when (notification.type) {
-            NotificationType.TRIGGERED -> "${rule.name} has been triggered"
-            NotificationType.ESCALATED -> "${rule.name} has been escalated"
-            NotificationType.RESOLVED -> "${rule.name} has been resolved"
-        }
-        
+
+        annotations["summary"] =
+            when (notification.type) {
+                NotificationType.TRIGGERED -> "${rule.name} has been triggered"
+                NotificationType.ESCALATED -> "${rule.name} has been escalated"
+                NotificationType.RESOLVED -> "${rule.name} has been resolved"
+            }
+
         annotations["description"] = rule.description
         annotations["current_value"] = String.format("%.2f", alert.currentValue)
         annotations["threshold"] = rule.threshold.toString()
         annotations["condition"] = rule.condition.toString()
         annotations["runbook_url"] = config.runbookUrl ?: "https://docs.company.com/runbooks/keycloak-kafka"
         annotations["dashboard_url"] = config.dashboardUrl ?: "http://grafana:3000/d/keycloak-kafka"
-        
+
         // Add metric-specific annotations
         when (rule.metric) {
             AlertMetric.ERROR_RATE -> {
@@ -159,30 +173,31 @@ class WebhookNotificationChannel(
                 annotations["escalation_path"] = "Platform Team → Infrastructure Team"
             }
         }
-        
+
         return annotations
     }
-    
+
     private fun sendWebhookRequest(payload: WebhookPayload): HttpResponse<String> {
         val json = objectMapper.writeValueAsString(payload)
-        
-        val requestBuilder = HttpRequest.newBuilder()
-            .uri(URI.create(config.url))
-            .header("Content-Type", "application/json")
-            .header("User-Agent", "Keycloak-Kafka-Event-Listener/1.0")
-            .timeout(Duration.ofSeconds(config.timeoutSeconds.toLong()))
-        
+
+        val requestBuilder =
+            HttpRequest.newBuilder()
+                .uri(URI.create(config.url))
+                .header("Content-Type", "application/json")
+                .header("User-Agent", "Keycloak-Kafka-Event-Listener/1.0")
+                .timeout(Duration.ofSeconds(config.timeoutSeconds.toLong()))
+
         // Add custom headers
         config.headers.forEach { (key, value) ->
             requestBuilder.header(key, value)
         }
-        
+
         // Add signature if secret is provided
         if (config.secret.isNotEmpty()) {
             val signature = generateSignature(json, config.secret)
             requestBuilder.header("X-Signature-SHA256", "sha256=$signature")
         }
-        
+
         // Add authentication if provided
         if (config.authentication != null) {
             when (config.authentication.type) {
@@ -190,9 +205,10 @@ class WebhookNotificationChannel(
                     requestBuilder.header("Authorization", "Bearer ${config.authentication.token}")
                 }
                 WebhookAuthType.BASIC -> {
-                    val credentials = Base64.getEncoder().encodeToString(
-                        "${config.authentication.username}:${config.authentication.password}".toByteArray()
-                    )
+                    val credentials =
+                        Base64.getEncoder().encodeToString(
+                            "${config.authentication.username}:${config.authentication.password}".toByteArray(),
+                        )
                     requestBuilder.header("Authorization", "Basic $credentials")
                 }
                 WebhookAuthType.API_KEY -> {
@@ -200,26 +216,30 @@ class WebhookNotificationChannel(
                 }
             }
         }
-        
-        val request = requestBuilder
-            .POST(HttpRequest.BodyPublishers.ofString(json))
-            .build()
-        
+
+        val request =
+            requestBuilder
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build()
+
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString())
     }
-    
-    private fun generateSignature(payload: String, secret: String): String {
+
+    private fun generateSignature(
+        payload: String,
+        secret: String,
+    ): String {
         val mac = Mac.getInstance("HmacSHA256")
         val secretKey = SecretKeySpec(secret.toByteArray(), "HmacSHA256")
         mac.init(secretKey)
         val signature = mac.doFinal(payload.toByteArray())
         return signature.joinToString("") { "%02x".format(it) }
     }
-    
+
     private fun getServiceVersion(): String {
         return System.getProperty("service.version") ?: "unknown"
     }
-    
+
     private fun getInstanceId(): String {
         return System.getProperty("instance.id") ?: System.getenv("HOSTNAME") ?: "unknown"
     }
@@ -240,7 +260,7 @@ data class WebhookConfig(
     val environment: String = "production",
     val teamName: String = "platform",
     val dashboardUrl: String? = null,
-    val runbookUrl: String? = null
+    val runbookUrl: String? = null,
 )
 
 /**
@@ -251,14 +271,16 @@ data class WebhookAuthentication(
     val token: String = "",
     val username: String = "",
     val password: String = "",
-    val headerName: String? = null
+    val headerName: String? = null,
 )
 
 /**
  * Webhook authentication types
  */
 enum class WebhookAuthType {
-    BEARER, BASIC, API_KEY
+    BEARER,
+    BASIC,
+    API_KEY,
 }
 
 /**
@@ -269,7 +291,7 @@ data class WebhookPayload(
     val timestamp: Long,
     val event: WebhookEvent,
     val alert: WebhookAlert,
-    val context: WebhookContext
+    val context: WebhookContext,
 )
 
 /**
@@ -278,7 +300,7 @@ data class WebhookPayload(
 data class WebhookEvent(
     val type: String,
     val source: String,
-    val environment: String
+    val environment: String,
 )
 
 /**
@@ -293,7 +315,7 @@ data class WebhookAlert(
     val metric: WebhookMetric,
     val timestamps: WebhookTimestamps,
     val labels: Map<String, String>,
-    val annotations: Map<String, String>
+    val annotations: Map<String, String>,
 )
 
 /**
@@ -303,7 +325,7 @@ data class WebhookMetric(
     val name: String,
     val currentValue: Double,
     val threshold: Double,
-    val condition: String
+    val condition: String,
 )
 
 /**
@@ -312,7 +334,7 @@ data class WebhookMetric(
 data class WebhookTimestamps(
     val triggeredAt: String,
     val resolvedAt: String?,
-    val lastUpdated: String
+    val lastUpdated: String,
 )
 
 /**
@@ -323,5 +345,5 @@ data class WebhookContext(
     val version: String,
     val instance: String,
     val dashboardUrl: String?,
-    val runbookUrl: String?
+    val runbookUrl: String?,
 )

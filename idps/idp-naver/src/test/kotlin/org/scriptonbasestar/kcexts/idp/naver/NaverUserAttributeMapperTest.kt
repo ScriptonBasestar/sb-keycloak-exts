@@ -53,10 +53,10 @@ class NaverUserAttributeMapperTest {
         }"""
 
         val jsonNode: JsonNode = objectMapper.readTree(naverResponse)
-        
+
         assertThat(jsonNode.get("resultcode").asText()).isEqualTo("00")
         assertThat(jsonNode.get("message").asText()).isEqualTo("success")
-        
+
         val response = jsonNode.get("response")
         assertThat(response.get("id").asText()).isEqualTo("32742776")
         assertThat(response.get("nickname").asText()).isEqualTo("홍길동")
@@ -75,7 +75,7 @@ class NaverUserAttributeMapperTest {
         }"""
 
         val jsonNode: JsonNode = objectMapper.readTree(errorResponse)
-        
+
         assertThat(jsonNode.get("resultcode").asText()).isNotEqualTo("00")
         assertThat(jsonNode.get("message").asText()).contains("failed")
         assertThat(jsonNode.get("error")).isNotNull
@@ -95,7 +95,7 @@ class NaverUserAttributeMapperTest {
 
         val jsonNode: JsonNode = objectMapper.readTree(minimalResponse)
         val response = jsonNode.get("response")
-        
+
         assertThat(response.get("id")).isNotNull
         assertThat(response.get("nickname")).isNotNull
         assertThat(response.get("email")).isNull()
@@ -106,11 +106,12 @@ class NaverUserAttributeMapperTest {
 
     @Test
     fun `should handle various gender formats`() {
-        val genderMappings = mapOf(
-            "M" to "male",
-            "F" to "female",
-            "U" to "unknown"
-        )
+        val genderMappings =
+            mapOf(
+                "M" to "male",
+                "F" to "female",
+                "U" to "unknown",
+            )
 
         genderMappings.forEach { (naverGender, expectedGender) ->
             when (naverGender) {

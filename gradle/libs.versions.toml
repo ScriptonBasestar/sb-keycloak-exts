@@ -19,6 +19,7 @@ nemerosa-versioning = "3.1.0"
 ktlint-plugin = "12.3.0"
 ktlint = "1.6.0"
 detekt = "1.23.7"
+dependency-check = "11.1.0"
 
 # Testing
 junit = "5.11.4"
@@ -62,6 +63,7 @@ keycloak-server-spi = { module = "org.keycloak:keycloak-server-spi", version.ref
 keycloak-server-spi-private = { module = "org.keycloak:keycloak-server-spi-private", version.ref = "keycloak" }
 keycloak-services = { module = "org.keycloak:keycloak-services", version.ref = "keycloak" }
 keycloak-model-jpa = { module = "org.keycloak:keycloak-model-jpa", version.ref = "keycloak" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak" }
 
 # Testing
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
@@ -74,7 +76,6 @@ testcontainers-core = { module = "org.testcontainers:testcontainers", version.re
 testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
-keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak" }
 
 # Enterprise Features
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson" }
@@ -123,3 +124,4 @@ protobuf = { id = "com.google.protobuf", version.ref = "protobuf" }
 nemerosa-versioning = { id = "net.nemerosa.versioning", version.ref = "nemerosa-versioning" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+dependency-check = { id = "org.owasp.dependencycheck", version.ref = "dependency-check" }

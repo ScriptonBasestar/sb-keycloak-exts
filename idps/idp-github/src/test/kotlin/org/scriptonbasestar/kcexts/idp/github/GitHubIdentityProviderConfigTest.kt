@@ -20,7 +20,7 @@ class GitHubIdentityProviderConfigTest {
     fun `model constructor should initialize with GitHub constants`() {
         val model = IdentityProviderModel()
         model.alias = "test-alias"
-        
+
         val config = GitHubIdentityProviderConfig(model)
 
         assertThat(config.alias).isEqualTo(GitHubConstant.providerId)

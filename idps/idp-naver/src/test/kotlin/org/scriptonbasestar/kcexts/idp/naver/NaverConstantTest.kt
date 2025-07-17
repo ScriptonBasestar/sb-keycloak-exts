@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class NaverConstantTest {
-    
     @Test
     fun `should have correct provider id`() {
         assertThat(NaverConstant.providerId).isEqualTo("naver")

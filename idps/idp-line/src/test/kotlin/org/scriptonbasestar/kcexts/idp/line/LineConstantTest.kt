@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class LineConstantTest {
-
     @Test
     fun `should have correct provider id`() {
         assertThat(LineConstant.providerId).isEqualTo("line")

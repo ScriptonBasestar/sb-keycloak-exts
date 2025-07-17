@@ -1,4 +1,4 @@
 dependencies {
-    bundleLib libs.bundles.jackson
-    bundleLib libs.bundles.logging
+    implementation libs.bundles.jackson
+    implementation libs.bundles.logging
 }

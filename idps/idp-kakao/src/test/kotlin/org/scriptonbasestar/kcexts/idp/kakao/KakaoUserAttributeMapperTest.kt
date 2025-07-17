@@ -81,11 +81,11 @@ class KakaoUserAttributeMapperTest {
         }"""
 
         val jsonNode: JsonNode = objectMapper.readTree(kakaoResponse)
-        
+
         // Verify basic profile data extraction
         assertThat(jsonNode.get("id").asLong()).isEqualTo(123456789L)
         assertThat(jsonNode.get("properties").get("nickname").asText()).isEqualTo("홍길동")
-        
+
         // Verify kakao_account data extraction
         val kakaoAccount = jsonNode.get("kakao_account")
         assertThat(kakaoAccount.get("email").asText()).isEqualTo("test@kakao.com")
@@ -111,7 +111,7 @@ class KakaoUserAttributeMapperTest {
         }"""
 
         val jsonNode: JsonNode = objectMapper.readTree(minimalKakaoResponse)
-        
+
         assertThat(jsonNode.get("id")).isNotNull
         assertThat(jsonNode.get("properties").get("nickname")).isNotNull
         assertThat(jsonNode.get("kakao_account").get("email")).isNull()
@@ -121,24 +121,28 @@ class KakaoUserAttributeMapperTest {
 
     @Test
     fun `should extract nested profile image URLs`() {
-        val response = mapOf(
-            "properties" to mapOf(
-                "profile_image" to "https://k.kakaocdn.net/profile1.jpg",
-                "thumbnail_image" to "https://k.kakaocdn.net/thumb1.jpg"
-            ),
-            "kakao_account" to mapOf(
-                "profile" to mapOf(
-                    "profile_image_url" to "https://k.kakaocdn.net/profile2.jpg",
-                    "thumbnail_image_url" to "https://k.kakaocdn.net/thumb2.jpg",
-                    "is_default_image" to false
-                )
+        val response =
+            mapOf(
+                "properties" to
+                    mapOf(
+                        "profile_image" to "https://k.kakaocdn.net/profile1.jpg",
+                        "thumbnail_image" to "https://k.kakaocdn.net/thumb1.jpg",
+                    ),
+                "kakao_account" to
+                    mapOf(
+                        "profile" to
+                            mapOf(
+                                "profile_image_url" to "https://k.kakaocdn.net/profile2.jpg",
+                                "thumbnail_image_url" to "https://k.kakaocdn.net/thumb2.jpg",
+                                "is_default_image" to false,
+                            ),
+                    ),
             )
-        )
 
         val properties = response["properties"] as Map<String, Any>
         val kakaoAccount = response["kakao_account"] as Map<String, Any>
         val profile = kakaoAccount["profile"] as Map<String, Any>
-        
+
         assertThat(properties["profile_image"]).isEqualTo("https://k.kakaocdn.net/profile1.jpg")
         assertThat(profile["profile_image_url"]).isEqualTo("https://k.kakaocdn.net/profile2.jpg")
         assertThat(profile["is_default_image"]).isEqualTo(false)

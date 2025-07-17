@@ -59,23 +59,25 @@ class NaverIdentityProviderTest {
 
     @Test
     fun `should handle Naver user profile structure`() {
-        val userProfile = mapOf(
-            "resultcode" to "00",
-            "message" to "success",
-            "response" to mapOf(
-                "id" to "32742776",
-                "nickname" to "Test User",
-                "profile_image" to "https://example.com/profile.jpg",
-                "email" to "test@naver.com",
-                "name" to "테스트",
-                "birthday" to "01-01",
-                "birthyear" to "1990",
-                "age" to "30-39",
-                "gender" to "M",
-                "mobile" to "010-1234-5678"
+        val userProfile =
+            mapOf(
+                "resultcode" to "00",
+                "message" to "success",
+                "response" to
+                    mapOf(
+                        "id" to "32742776",
+                        "nickname" to "Test User",
+                        "profile_image" to "https://example.com/profile.jpg",
+                        "email" to "test@naver.com",
+                        "name" to "테스트",
+                        "birthday" to "01-01",
+                        "birthyear" to "1990",
+                        "age" to "30-39",
+                        "gender" to "M",
+                        "mobile" to "010-1234-5678",
+                    ),
             )
-        )
-        
+
         val response = userProfile["response"] as Map<String, Any>
         assertThat(response["email"]).isEqualTo("test@naver.com")
         assertThat(response["nickname"]).isEqualTo("Test User")
@@ -83,15 +85,17 @@ class NaverIdentityProviderTest {
 
     @Test
     fun `should handle missing email gracefully`() {
-        val userProfile = mapOf(
-            "resultcode" to "00",
-            "message" to "success",
-            "response" to mapOf(
-                "id" to "32742776",
-                "nickname" to "Test User"
+        val userProfile =
+            mapOf(
+                "resultcode" to "00",
+                "message" to "success",
+                "response" to
+                    mapOf(
+                        "id" to "32742776",
+                        "nickname" to "Test User",
+                    ),
             )
-        )
-        
+
         val response = userProfile["response"] as Map<String, Any>
         assertThat(response).containsKey("id")
         assertThat(response).doesNotContainKey("email")
@@ -108,13 +112,14 @@ class NaverIdentityProviderTest {
 
     @Test
     fun `should handle Naver API error responses`() {
-        val errorResponse = mapOf(
-            "resultcode" to "024",
-            "message" to "Authentication failed",
-            "error" to "invalid_request",
-            "error_description" to "Invalid client_id"
-        )
-        
+        val errorResponse =
+            mapOf(
+                "resultcode" to "024",
+                "message" to "Authentication failed",
+                "error" to "invalid_request",
+                "error_description" to "Invalid client_id",
+            )
+
         assertThat(errorResponse["resultcode"]).isNotEqualTo("00")
         assertThat(errorResponse["message"]).contains("failed")
     }

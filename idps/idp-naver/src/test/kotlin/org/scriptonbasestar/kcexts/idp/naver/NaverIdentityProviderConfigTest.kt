@@ -7,11 +7,10 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 class NaverIdentityProviderConfigTest {
-    
     @Test
     fun `should create config with default constructor`() {
         val config = NaverIdentityProviderConfig()
-        
+
         assertThat(config.alias).isEqualTo("naver")
         assertThat(config.authorizationUrl).isEqualTo(NaverConstant.authUrl)
         assertThat(config.tokenUrl).isEqualTo(NaverConstant.tokenUrl)
@@ -23,9 +22,9 @@ class NaverIdentityProviderConfigTest {
     fun `should create config from IdentityProviderModel`() {
         val mockModel = mock<IdentityProviderModel>()
         whenever(mockModel.config).thenReturn(HashMap())
-        
+
         val config = NaverIdentityProviderConfig(mockModel)
-        
+
         assertThat(config.alias).isEqualTo("naver")
         assertThat(config.authorizationUrl).isEqualTo(NaverConstant.authUrl)
         assertThat(config.tokenUrl).isEqualTo(NaverConstant.tokenUrl)
@@ -40,9 +39,9 @@ class NaverIdentityProviderConfigTest {
         customConfig["clientId"] = "test-client-id"
         customConfig["clientSecret"] = "test-client-secret"
         whenever(mockModel.config).thenReturn(customConfig)
-        
+
         val config = NaverIdentityProviderConfig(mockModel)
-        
+
         assertThat(config.clientId).isEqualTo("test-client-id")
         assertThat(config.clientSecret).isEqualTo("test-client-secret")
     }

@@ -49,7 +49,7 @@ class LineUserAttributeMapperTest {
         }"""
 
         val jsonNode: JsonNode = objectMapper.readTree(lineResponse)
-        
+
         assertThat(jsonNode.get("userId").asText()).isEqualTo("U4af4980629...")
         assertThat(jsonNode.get("displayName").asText()).isEqualTo("Brown")
         assertThat(jsonNode.get("pictureUrl").asText()).isEqualTo("https://profile.line-scdn.net/profile.jpg")
@@ -67,7 +67,7 @@ class LineUserAttributeMapperTest {
         }"""
 
         val jsonNode: JsonNode = objectMapper.readTree(lineOidcResponse)
-        
+
         assertThat(jsonNode.get("sub").asText()).isEqualTo("U4af4980629...")
         assertThat(jsonNode.get("name").asText()).isEqualTo("Brown Sally")
         assertThat(jsonNode.get("email").asText()).isEqualTo("brown@example.com")
@@ -82,7 +82,7 @@ class LineUserAttributeMapperTest {
         }"""
 
         val jsonNode: JsonNode = objectMapper.readTree(minimalResponse)
-        
+
         assertThat(jsonNode.get("userId")).isNotNull
         assertThat(jsonNode.get("displayName")).isNotNull
         assertThat(jsonNode.get("pictureUrl")).isNull()

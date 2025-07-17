@@ -32,7 +32,7 @@ class NaverIdentityProviderFactoryTest {
     @Test
     fun `should create NaverIdentityProvider instance`() {
         val provider = factory.create(mockSession, mockModel)
-        
+
         assertThat(provider).isNotNull
         assertThat(provider).isInstanceOf(NaverIdentityProvider::class.java)
     }
@@ -40,7 +40,7 @@ class NaverIdentityProviderFactoryTest {
     @Test
     fun `should create NaverIdentityProviderConfig`() {
         val config = factory.createConfig()
-        
+
         assertThat(config).isNotNull
         assertThat(config).isInstanceOf(NaverIdentityProviderConfig::class.java)
         assertThat(config.alias).isEqualTo("naver")

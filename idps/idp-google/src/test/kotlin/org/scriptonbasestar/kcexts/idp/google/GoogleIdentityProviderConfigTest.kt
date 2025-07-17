@@ -20,7 +20,7 @@ class GoogleIdentityProviderConfigTest {
     fun `model constructor should initialize with Google constants`() {
         val model = IdentityProviderModel()
         model.alias = "test-alias"
-        
+
         val config = GoogleIdentityProviderConfig(model)
 
         assertThat(config.alias).isEqualTo(GoogleConstant.providerId)

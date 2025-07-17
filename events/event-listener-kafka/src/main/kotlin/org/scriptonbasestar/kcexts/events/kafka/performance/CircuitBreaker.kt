@@ -11,28 +11,28 @@ import java.util.concurrent.atomic.AtomicReference
  * Prevents cascading failures and provides fallback mechanisms
  */
 class CircuitBreaker(
-    private val config: CircuitBreakerConfig
+    private val config: CircuitBreakerConfig,
 ) {
     companion object {
         private val logger = Logger.getLogger(CircuitBreaker::class.java)
     }
-    
+
     private val state = AtomicReference(CircuitBreakerState.CLOSED)
     private val failureCount = AtomicInteger(0)
     private val successCount = AtomicInteger(0)
     private val halfOpenSuccessCount = AtomicInteger(0)
     private val lastFailureTime = AtomicLong(0)
     private val lastStateChangeTime = AtomicLong(System.currentTimeMillis())
-    
+
     // Sliding window for failure tracking
     private val recentCalls = ConcurrentLinkedQueue<CallRecord>()
-    
+
     /**
      * Execute a call through the circuit breaker
      */
     fun <T> execute(operation: () -> T): T {
         val currentState = state.get()
-        
+
         when (currentState) {
             CircuitBreakerState.CLOSED -> {
                 return executeInClosedState(operation)
@@ -45,7 +45,7 @@ class CircuitBreaker(
             }
         }
     }
-    
+
     /**
      * Execute operation when circuit is closed (normal operation)
      */
@@ -59,14 +59,14 @@ class CircuitBreaker(
             throw e
         }
     }
-    
+
     /**
      * Execute operation when circuit is open (failing fast)
      */
     private fun <T> executeInOpenState(operation: () -> T): T {
         val currentTime = System.currentTimeMillis()
         val timeSinceLastFailure = currentTime - lastFailureTime.get()
-        
+
         if (timeSinceLastFailure >= config.openTimeoutMs) {
             logger.info("Circuit breaker attempting recovery, moving to HALF_OPEN state")
             transitionToHalfOpen()
@@ -77,7 +77,7 @@ class CircuitBreaker(
             throw CircuitBreakerOpenException("Circuit breaker is OPEN, time remaining: ${timeRemaining}ms")
         }
     }
-    
+
     /**
      * Execute operation when circuit is half-open (testing recovery)
      */
@@ -91,7 +91,7 @@ class CircuitBreaker(
             throw e
         }
     }
-    
+
     /**
      * Record a successful operation
      */
@@ -99,13 +99,13 @@ class CircuitBreaker(
         cleanupOldRecords()
         recentCalls.offer(CallRecord(System.currentTimeMillis(), true))
         successCount.incrementAndGet()
-        
+
         // Reset failure count on success in closed state
         if (state.get() == CircuitBreakerState.CLOSED) {
             failureCount.set(0)
         }
     }
-    
+
     /**
      * Record a failed operation
      */
@@ -114,27 +114,27 @@ class CircuitBreaker(
         recentCalls.offer(CallRecord(System.currentTimeMillis(), false))
         failureCount.incrementAndGet()
         lastFailureTime.set(System.currentTimeMillis())
-        
+
         logger.warn("Circuit breaker recorded failure: ${exception.message}")
-        
+
         if (shouldOpenCircuit()) {
             transitionToOpen()
         }
     }
-    
+
     /**
      * Record a successful operation in half-open state
      */
     private fun recordHalfOpenSuccess() {
         halfOpenSuccessCount.incrementAndGet()
         successCount.incrementAndGet()
-        
+
         if (halfOpenSuccessCount.get() >= config.halfOpenSuccessThreshold) {
             logger.info("Circuit breaker recovered, moving to CLOSED state")
             transitionToClosed()
         }
     }
-    
+
     /**
      * Record a failed operation in half-open state
      */
@@ -143,24 +143,24 @@ class CircuitBreaker(
         lastFailureTime.set(System.currentTimeMillis())
         transitionToOpen()
     }
-    
+
     /**
      * Check if circuit should be opened
      */
     private fun shouldOpenCircuit(): Boolean {
         cleanupOldRecords()
-        
+
         val totalCalls = recentCalls.size
         if (totalCalls < config.minimumCallsThreshold) {
             return false
         }
-        
+
         val failures = recentCalls.count { !it.success }
         val failureRate = failures.toDouble() / totalCalls.toDouble()
-        
+
         return failureRate >= config.failureThreshold
     }
-    
+
     /**
      * Transition to OPEN state
      */
@@ -170,12 +170,12 @@ class CircuitBreaker(
             lastStateChangeTime.set(System.currentTimeMillis())
             halfOpenSuccessCount.set(0)
             logger.warn("Circuit breaker OPENED due to failure threshold exceeded")
-            
+
             // Trigger state change event
             config.onStateChange?.invoke(CircuitBreakerState.OPEN, previousState)
         }
     }
-    
+
     /**
      * Transition to HALF_OPEN state
      */
@@ -185,11 +185,11 @@ class CircuitBreaker(
             lastStateChangeTime.set(System.currentTimeMillis())
             halfOpenSuccessCount.set(0)
             logger.info("Circuit breaker moved to HALF_OPEN state for recovery testing")
-            
+
             config.onStateChange?.invoke(CircuitBreakerState.HALF_OPEN, previousState)
         }
     }
-    
+
     /**
      * Transition to CLOSED state
      */
@@ -200,11 +200,11 @@ class CircuitBreaker(
             failureCount.set(0)
             halfOpenSuccessCount.set(0)
             logger.info("Circuit breaker CLOSED - normal operation resumed")
-            
+
             config.onStateChange?.invoke(CircuitBreakerState.CLOSED, previousState)
         }
     }
-    
+
     /**
      * Clean up old call records outside the sliding window
      */
@@ -218,18 +218,18 @@ class CircuitBreaker(
             recentCalls.poll()
         }
     }
-    
+
     /**
      * Get current circuit breaker statistics
      */
     fun getStatistics(): CircuitBreakerStatistics {
         cleanupOldRecords()
-        
+
         val totalCalls = recentCalls.size
         val failures = recentCalls.count { !it.success }
         val successes = totalCalls - failures
         val failureRate = if (totalCalls > 0) (failures.toDouble() / totalCalls.toDouble()) * 100 else 0.0
-        
+
         return CircuitBreakerStatistics(
             state = state.get(),
             totalSuccesses = successCount.get().toLong(),
@@ -239,15 +239,15 @@ class CircuitBreaker(
             recentFailureRate = failureRate,
             lastFailureTime = lastFailureTime.get(),
             lastStateChangeTime = lastStateChangeTime.get(),
-            halfOpenSuccessCount = halfOpenSuccessCount.get()
+            halfOpenSuccessCount = halfOpenSuccessCount.get(),
         )
     }
-    
+
     /**
      * Get current state
      */
     fun getCurrentState(): CircuitBreakerState = state.get()
-    
+
     /**
      * Check if circuit breaker is allowing calls
      */
@@ -262,7 +262,7 @@ class CircuitBreaker(
             }
         }
     }
-    
+
     /**
      * Force circuit breaker to specific state (for testing)
      */
@@ -271,7 +271,7 @@ class CircuitBreaker(
         lastStateChangeTime.set(System.currentTimeMillis())
         logger.info("Circuit breaker state forced from $oldState to $newState")
     }
-    
+
     /**
      * Reset circuit breaker to initial state
      */
@@ -296,16 +296,16 @@ data class CircuitBreakerConfig(
     val openTimeoutMs: Long = 60000L, // 1 minute timeout in open state
     val halfOpenSuccessThreshold: Int = 3, // Successes needed to close from half-open
     val slidingWindowMs: Long = 60000L, // 1 minute sliding window
-    val onStateChange: ((newState: CircuitBreakerState, oldState: CircuitBreakerState) -> Unit)? = null
+    val onStateChange: ((newState: CircuitBreakerState, oldState: CircuitBreakerState) -> Unit)? = null,
 )
 
 /**
  * Circuit breaker states
  */
 enum class CircuitBreakerState {
-    CLOSED,     // Normal operation
-    OPEN,       // Failing fast
-    HALF_OPEN   // Testing recovery
+    CLOSED, // Normal operation
+    OPEN, // Failing fast
+    HALF_OPEN, // Testing recovery
 }
 
 /**
@@ -320,7 +320,7 @@ data class CircuitBreakerStatistics(
     val recentFailureRate: Double,
     val lastFailureTime: Long,
     val lastStateChangeTime: Long,
-    val halfOpenSuccessCount: Int
+    val halfOpenSuccessCount: Int,
 )
 
 /**
@@ -328,7 +328,7 @@ data class CircuitBreakerStatistics(
  */
 private data class CallRecord(
     val timestamp: Long,
-    val success: Boolean
+    val success: Boolean,
 )
 
 /**

@@ -32,7 +32,7 @@ class LineIdentityProviderFactoryTest {
     @Test
     fun `should create LineIdentityProvider instance`() {
         val provider = factory.create(mockSession, mockModel)
-        
+
         assertThat(provider).isNotNull
         assertThat(provider).isInstanceOf(LineIdentityProvider::class.java)
     }
@@ -40,7 +40,7 @@ class LineIdentityProviderFactoryTest {
     @Test
     fun `should create LineIdentityProviderConfig`() {
         val config = factory.createConfig()
-        
+
         assertThat(config).isNotNull
         assertThat(config).isInstanceOf(LineIdentityProviderConfig::class.java)
         assertThat(config.alias).isEqualTo("line")

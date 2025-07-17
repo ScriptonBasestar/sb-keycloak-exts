@@ -6,10 +6,10 @@ import org.keycloak.events.Event
 import org.keycloak.events.EventListenerProvider
 import org.keycloak.events.admin.AdminEvent
 import org.keycloak.models.KeycloakSession
+import org.scriptonbasestar.kcexts.events.kafka.metrics.KafkaEventMetrics
 import org.scriptonbasestar.kcexts.events.kafka.model.AuthDetails
 import org.scriptonbasestar.kcexts.events.kafka.model.KeycloakAdminEvent
 import org.scriptonbasestar.kcexts.events.kafka.model.KeycloakEvent
-import org.scriptonbasestar.kcexts.events.kafka.metrics.KafkaEventMetrics
 import java.util.*
 
 class KafkaEventListenerProvider(
@@ -51,23 +51,23 @@ class KafkaEventListenerProvider(
             val key = "${event.realmId}:${event.type}:${event.userId ?: "anonymous"}"
 
             producerManager.sendUserEvent(key, json)
-            
+
             // Record metrics
             metrics.recordEventSent(
                 eventType = event.type.name,
                 realm = event.realmId ?: "unknown",
                 topic = config.userEventsTopic,
-                sizeBytes = json.toByteArray().size
+                sizeBytes = json.toByteArray().size,
             )
             metrics.stopTimer(timerSample, event.type.name)
-            
+
             logger.debug("User event sent to Kafka: type=${event.type}, userId=${event.userId}")
         } catch (e: Exception) {
             metrics.recordEventFailed(
                 eventType = event.type.name,
                 realm = event.realmId ?: "unknown",
                 topic = config.userEventsTopic,
-                errorType = e.javaClass.simpleName
+                errorType = e.javaClass.simpleName,
             )
             logger.error("Failed to process user event", e)
         }
@@ -107,23 +107,23 @@ class KafkaEventListenerProvider(
             val key = "${event.realmId}:${event.operationType}:${event.authDetails.userId ?: "anonymous"}"
 
             producerManager.sendAdminEvent(key, json)
-            
+
             // Record metrics
             metrics.recordEventSent(
                 eventType = "ADMIN_${event.operationType.name}",
                 realm = event.realmId ?: "unknown",
                 topic = config.adminEventsTopic,
-                sizeBytes = json.toByteArray().size
+                sizeBytes = json.toByteArray().size,
             )
             metrics.stopTimer(timerSample, "ADMIN_${event.operationType.name}")
-            
+
             logger.debug("Admin event sent to Kafka: type=${event.operationType}, userId=${event.authDetails.userId}")
         } catch (e: Exception) {
             metrics.recordEventFailed(
                 eventType = "ADMIN_${event.operationType.name}",
                 realm = event.realmId ?: "unknown",
                 topic = config.adminEventsTopic,
-                errorType = e.javaClass.simpleName
+                errorType = e.javaClass.simpleName,
             )
             logger.error("Failed to process admin event", e)
         }
