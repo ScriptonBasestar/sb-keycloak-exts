@@ -14,7 +14,9 @@
       "mcp__shrimp__split_tasks",
       "mcp__shrimp__execute_task",
       "mcp__shrimp__verify_task",
-      "mcp__shrimp__list_tasks"
+      "mcp__shrimp__list_tasks",
+      "Bash(make:*)",
+      "Bash(/usr/bin/make help)"
     ],
     "deny": []
   }
