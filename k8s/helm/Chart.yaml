@@ -20,11 +20,13 @@ keywords:
 annotations:
   category: Identity and Access Management
 dependencies:
-  - name: postgresql
-    version: 12.x.x
-    repository: https://charts.bitnami.com/bitnami
+  - name: cloudnative-pg
+    version: 0.23.x
+    repository: https://cloudnative-pg.github.io/charts
     condition: postgresql.enabled
-  - name: kafka
-    version: 26.x.x
-    repository: https://charts.bitnami.com/bitnami
+    alias: postgresql
+  - name: strimzi-kafka-operator
+    version: 0.45.x
+    repository: https://strimzi.io/charts
     condition: kafka.enabled
+    alias: kafka

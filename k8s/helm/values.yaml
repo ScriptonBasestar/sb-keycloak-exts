@@ -272,17 +272,12 @@ secrets:
     enabled: false
     data: {}
 
-# PostgreSQL dependency (Bitnami chart)
+# PostgreSQL dependency (CloudNativePG)
 postgresql:
   enabled: true
-  auth:
-    postgresPassword: postgres
-    username: keycloak
-    password: password
-    database: keycloak
-  primary:
-    persistence:
-      enabled: true
+  cluster:
+    instances: 1
+    storage:
       size: 8Gi
     resources:
       requests:
@@ -291,33 +286,57 @@ postgresql:
       limits:
         memory: 512Mi
         cpu: 500m
+    postgresql:
+      parameters:
+        max_connections: "100"
+    bootstrap:
+      initdb:
+        database: keycloak
+        owner: keycloak
+        secret:
+          name: postgresql-credentials
+    superuserSecret:
+      name: postgresql-superuser
 
-# Kafka dependency (Bitnami chart)
+# Kafka dependency (Strimzi Operator)
 kafka:
   enabled: true
-  replicaCount: 1
-  auth:
-    enabled: false
+  cluster:
+    name: keycloak-kafka
+    replicas: 1
+    listeners:
+      plain:
+        enabled: true
+      tls:
+        enabled: false
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+    storage:
+      type: persistent-claim
+      size: 8Gi
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m
+      limits:
+        memory: 1Gi
+        cpu: 500m
   zookeeper:
-    enabled: true
-    replicaCount: 1
+    replicas: 1
+    storage:
+      type: persistent-claim
+      size: 2Gi
   topics:
     - name: keycloak.user.events
       partitions: 3
-      replicationFactor: 1
+      replicas: 1
     - name: keycloak.admin.events
       partitions: 3
-      replicationFactor: 1
-  persistence:
-    enabled: true
-    size: 8Gi
-  resources:
-    requests:
-      memory: 512Mi
-      cpu: 250m
-    limits:
-      memory: 1Gi
-      cpu: 500m
+      replicas: 1
 
 # Monitoring configuration
 monitoring:
