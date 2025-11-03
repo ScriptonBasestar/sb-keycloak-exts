@@ -1,23 +1,23 @@
 [versions]
 # JVM & Kotlin
 java = "21"
-kotlin = "2.2.0"
+kotlin = "2.1.0"
 kotlin-coroutines = "1.10.2"
-groovy = "4.0.27"
+groovy = "4.0.29"
 
 # Keycloak
-keycloak = "26.3.1"
+keycloak = "26.0.7"
 
 # Build Tools
-gradle = "8.10"
+gradle = "8.11"
 shadow = "8.1.1"
-asciidoctor = "4.0.4"
+asciidoctor = "4.0.5"
 protobuf = "0.9.5"
 nemerosa-versioning = "3.1.0"
 
 # Code Quality
-ktlint-plugin = "12.3.0"
-ktlint = "1.6.0"
+ktlint-plugin = "13.1.0"
+ktlint = "1.7.1"
 detekt = "1.23.7"
 dependency-check = "11.1.0"
 

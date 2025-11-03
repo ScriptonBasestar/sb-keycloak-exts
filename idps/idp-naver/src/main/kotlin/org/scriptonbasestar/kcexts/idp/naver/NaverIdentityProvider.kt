@@ -26,11 +26,18 @@ class NaverIdentityProvider(
         event: EventBuilder?,
         profile: JsonNode,
     ): BrokeredIdentityContext {
-        val email: String = profile.get("response").get("email").asText()
-        val user = BrokeredIdentityContext(profile.get("response").get("id").asText(), config)
+        val response = profile.get("response")
+        val email: String = response.get("email").asText()
+        val user = BrokeredIdentityContext(response.get("id").asText(), config)
 
         user.username = email
         user.email = email
+
+        // Extract name from Naver profile
+        response.get("name")?.asText()?.let { name ->
+            user.firstName = name
+        }
+
         // user.idp = this // 제거된 부분
 
         AbstractJsonUserAttributeMapper.storeUserProfileForMapper(user, profile, config.alias)
