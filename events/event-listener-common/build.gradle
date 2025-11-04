@@ -1,0 +1,27 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+dependencies {
+    // Keycloak SPI (provided by Keycloak at runtime)
+    compileOnly libs.keycloak.server.spi
+    compileOnly libs.keycloak.server.spi.private
+
+    // JSON Processing
+    implementation libs.bundles.jackson
+
+    // Logging
+    implementation libs.bundles.logging
+
+    // Testing
+    testImplementation libs.bundles.testing
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+kotlin {
+    jvmToolchain(21)
+}
