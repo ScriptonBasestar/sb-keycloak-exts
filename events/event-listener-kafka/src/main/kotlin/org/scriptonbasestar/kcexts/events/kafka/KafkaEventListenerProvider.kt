@@ -6,10 +6,10 @@ import org.keycloak.events.Event
 import org.keycloak.events.EventListenerProvider
 import org.keycloak.events.admin.AdminEvent
 import org.keycloak.models.KeycloakSession
+import org.scriptonbasestar.kcexts.events.common.model.AuthDetails
+import org.scriptonbasestar.kcexts.events.common.model.KeycloakAdminEvent
+import org.scriptonbasestar.kcexts.events.common.model.KeycloakEvent
 import org.scriptonbasestar.kcexts.events.kafka.metrics.KafkaEventMetrics
-import org.scriptonbasestar.kcexts.events.kafka.model.AuthDetails
-import org.scriptonbasestar.kcexts.events.kafka.model.KeycloakAdminEvent
-import org.scriptonbasestar.kcexts.events.kafka.model.KeycloakEvent
 import java.util.*
 
 class KafkaEventListenerProvider(
