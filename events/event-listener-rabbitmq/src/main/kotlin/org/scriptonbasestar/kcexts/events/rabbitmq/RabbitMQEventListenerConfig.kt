@@ -50,9 +50,13 @@ data class RabbitMQEventListenerConfig(
                 enableAdminEvents = config["enableAdminEvents"]?.toBoolean() ?: true,
                 includedEventTypes =
                     config["includedEventTypes"]
-                        ?.split(",")
-                        ?.map { it.trim() }
-                        ?.toSet()
+                        ?.let { types ->
+                            if (types.isBlank()) {
+                                emptySet()
+                            } else {
+                                types.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+                            }
+                        }
                         ?: emptySet(),
                 connectionTimeout = config["connectionTimeout"]?.toIntOrNull() ?: 60000,
                 requestedHeartbeat = config["requestedHeartbeat"]?.toIntOrNull() ?: 60,
