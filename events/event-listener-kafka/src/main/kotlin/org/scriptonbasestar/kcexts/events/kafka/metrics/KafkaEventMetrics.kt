@@ -1,13 +1,17 @@
 package org.scriptonbasestar.kcexts.events.kafka.metrics
 
 import org.jboss.logging.Logger
+import org.scriptonbasestar.kcexts.events.common.metrics.EventMetrics
+import org.scriptonbasestar.kcexts.events.common.metrics.MetricsSummary
+import org.scriptonbasestar.kcexts.events.common.metrics.TimerSample
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Basic Kafka Event Listener Metrics collector (without Micrometer/Prometheus dependencies)
- * Provides essential metrics for monitoring event processing
+ * Kafka Event Listener Metrics collector implementing common EventMetrics interface
+ * Provides essential metrics for monitoring event processing with Kafka-specific features
  */
-class KafkaEventMetrics {
+class KafkaEventMetrics : EventMetrics {
     companion object {
         private val logger = Logger.getLogger(KafkaEventMetrics::class.java)
     }
@@ -20,56 +24,67 @@ class KafkaEventMetrics {
     private val eventCountAccumulator = AtomicLong(0)
     private val connectionStatus = AtomicLong(1) // 1 = connected, 0 = disconnected
 
-    // Simple timer for tracking processing times
-    class TimerSample(
-        private val startTime: Long = System.currentTimeMillis(),
-    ) {
-        fun stop(): Long = System.currentTimeMillis() - startTime
-    }
+    // For common interface compatibility
+    private val eventDurations = ConcurrentHashMap<String, AtomicLong>()
+    private val eventDurationCounts = ConcurrentHashMap<String, AtomicLong>()
+    private val errorsByType = ConcurrentHashMap<String, AtomicLong>()
+    private val eventsByType = ConcurrentHashMap<String, AtomicLong>()
 
     /**
-     * Record successful event sent
+     * Record successful event sent (implements EventMetrics interface)
      */
-    fun recordEventSent(
+    override fun recordEventSent(
         eventType: String,
         realm: String,
-        topic: String,
+        destination: String,
         sizeBytes: Int,
     ) {
         eventsSentTotal.incrementAndGet()
         eventSizeAccumulator.addAndGet(sizeBytes.toLong())
         eventCountAccumulator.incrementAndGet()
 
-        logger.trace("Event sent recorded: type=$eventType, realm=$realm, topic=$topic, size=$sizeBytes")
+        // Track by type for common interface
+        val key = "$eventType:$realm:$destination"
+        eventsByType.computeIfAbsent(key) { AtomicLong(0) }.incrementAndGet()
+
+        logger.trace("Event sent recorded: type=$eventType, realm=$realm, destination=$destination, size=$sizeBytes")
     }
 
     /**
-     * Record failed event
+     * Record failed event (implements EventMetrics interface)
      */
-    fun recordEventFailed(
+    override fun recordEventFailed(
         eventType: String,
         realm: String,
-        topic: String,
+        destination: String,
         errorType: String,
     ) {
         eventsFailedTotal.incrementAndGet()
-        logger.debug("Event failure recorded: type=$eventType, realm=$realm, topic=$topic, error=$errorType")
+
+        // Track errors by type for common interface
+        val key = "$eventType:$realm:$destination:$errorType"
+        errorsByType.computeIfAbsent(key) { AtomicLong(0) }.incrementAndGet()
+
+        logger.debug("Event failure recorded: type=$eventType, realm=$realm, destination=$destination, error=$errorType")
     }
 
     /**
-     * Start timing an event
+     * Start timing an event (implements EventMetrics interface)
      */
-    fun startTimer(): TimerSample = TimerSample()
+    override fun startTimer(): TimerSample = TimerSample(System.nanoTime())
 
     /**
-     * Stop timing and record
+     * Stop timing and record (implements EventMetrics interface)
      */
-    fun stopTimer(
+    override fun stopTimer(
         sample: TimerSample,
         eventType: String,
     ) {
-        val duration = sample.stop()
-        logger.trace("Event processing completed: type=$eventType, duration=${duration}ms")
+        val duration = System.nanoTime() - sample.startTime
+        eventDurations.computeIfAbsent(eventType) { AtomicLong(0) }.addAndGet(duration)
+        eventDurationCounts.computeIfAbsent(eventType) { AtomicLong(0) }.incrementAndGet()
+
+        logger.trace("Event processing completed: type=$eventType, duration=${duration / 1_000_000}ms")
     }
 
     /**
@@ -95,9 +110,35 @@ class KafkaEventMetrics {
     }
 
     /**
-     * Get metrics summary for logging
+     * Get metrics summary (implements EventMetrics interface)
      */
-    fun getMetricsSummary(): MetricsSummary {
+    override fun getMetricsSummary(): MetricsSummary {
+        val totalSent = eventsSentTotal.get()
+        val totalFailed = eventsFailedTotal.get()
+
+        // Calculate average latency in milliseconds
+        val totalDuration = eventDurations.values.sumOf { it.get() }
+        val totalDurationCount = eventDurationCounts.values.sumOf { it.get() }
+        val avgLatencyMs =
+            if (totalDurationCount > 0) {
+                (totalDuration.toDouble() / totalDurationCount) / 1_000_000.0
+            } else {
+                0.0
+            }
+
+        return MetricsSummary(
+            totalSent = totalSent,
+            totalFailed = totalFailed,
+            avgLatencyMs = avgLatencyMs,
+            errorsByType = errorsByType.mapValues { it.value.get() },
+            eventsByType = eventsByType.mapValues { it.value.get() },
+        )
+    }
+
+    /**
+     * Get extended Kafka-specific metrics summary
+     */
+    fun getKafkaMetricsSummary(): KafkaMetricsSummary {
         val totalEventsSent = eventsSentTotal.get()
         val totalEventsFailed = eventsFailedTotal.get()
         val avgEventSize =
@@ -107,7 +148,7 @@ class KafkaEventMetrics {
                 0L
             }
 
-        return MetricsSummary(
+        return KafkaMetricsSummary(
             totalEventsSent = totalEventsSent,
             totalEventsFailed = totalEventsFailed,
             successRate =
@@ -133,14 +174,18 @@ class KafkaEventMetrics {
         eventSizeAccumulator.set(0)
         eventCountAccumulator.set(0)
         connectionStatus.set(1)
-        logger.info("Basic metrics reset")
+        eventDurations.clear()
+        eventDurationCounts.clear()
+        errorsByType.clear()
+        eventsByType.clear()
+        logger.info("Kafka metrics reset")
     }
 
     /**
      * Log current metrics summary
      */
     fun logMetricsSummary() {
-        val summary = getMetricsSummary()
+        val summary = getKafkaMetricsSummary()
         logger.info(
             "Kafka Event Metrics Summary - Sent: ${summary.totalEventsSent}, " +
                 "Failed: ${summary.totalEventsFailed}, Success Rate: ${"%.2f".format(summary.successRate)}%, " +
@@ -151,9 +196,9 @@ class KafkaEventMetrics {
 }
 
 /**
- * Metrics summary data class
+ * Kafka-specific extended metrics summary data class
  */
-data class MetricsSummary(
+data class KafkaMetricsSummary(
     val totalEventsSent: Long,
     val totalEventsFailed: Long,
     val successRate: Double,

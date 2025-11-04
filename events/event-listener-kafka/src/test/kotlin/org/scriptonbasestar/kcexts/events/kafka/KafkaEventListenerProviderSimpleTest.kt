@@ -13,7 +13,7 @@ class KafkaEventListenerProviderSimpleTest {
     @Test
     fun `should create data models successfully`() {
         val event =
-            org.scriptonbasestar.kcexts.events.kafka.model.KeycloakEvent(
+            org.scriptonbasestar.kcexts.events.common.model.KeycloakEvent(
                 id = "test-id",
                 time = System.currentTimeMillis(),
                 type = "LOGIN",

@@ -3,7 +3,7 @@ package org.scriptonbasestar.kcexts.events.kafka
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
-import org.scriptonbasestar.kcexts.events.kafka.model.KeycloakAdminEvent
+import org.scriptonbasestar.kcexts.events.common.model.KeycloakAdminEvent
 import org.scriptonbasestar.kcexts.events.kafka.testcontainers.BaseIntegrationTest
 import org.scriptonbasestar.kcexts.events.kafka.testcontainers.KafkaTestContainer
 import org.scriptonbasestar.kcexts.events.kafka.testcontainers.KeycloakTestContainer
@@ -131,8 +131,8 @@ class KafkaEventListenerIntegrationTest : BaseIntegrationTest() {
                 adminMessages.forEach { message ->
                     try {
                         val adminEvent = objectMapper.readValue(message, KeycloakAdminEvent::class.java)
-                        assertNotNull(adminEvent.id, "Admin event should have ID")
-                        assertNotNull(adminEvent.operationType, "Admin event should have operation type")
+                        kotlin.test.assertNotNull(adminEvent.id, "Admin event should have ID")
+                        kotlin.test.assertNotNull(adminEvent.operationType, "Admin event should have operation type")
                         logger.info("Parsed admin event: ${adminEvent.operationType}")
                     } catch (e: Exception) {
                         logger.warn("Failed to parse admin event message: $message", e)
@@ -159,7 +159,7 @@ class KafkaEventListenerIntegrationTest : BaseIntegrationTest() {
 
         // Kafka 설정 확인
         val attributes = realm.attributes
-        assertNotNull(attributes, "Realm should have attributes")
+        kotlin.test.assertNotNull(attributes, "Realm should have attributes")
         assertEquals(
             kafkaContainer.getBootstrapServers(),
             attributes["kafka.bootstrap.servers"],
