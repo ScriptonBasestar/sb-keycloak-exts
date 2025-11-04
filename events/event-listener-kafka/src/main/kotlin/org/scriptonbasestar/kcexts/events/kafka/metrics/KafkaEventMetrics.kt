@@ -3,6 +3,7 @@ package org.scriptonbasestar.kcexts.events.kafka.metrics
 import org.jboss.logging.Logger
 import org.scriptonbasestar.kcexts.events.common.metrics.EventMetrics
 import org.scriptonbasestar.kcexts.events.common.metrics.MetricsSummary
+import org.scriptonbasestar.kcexts.events.common.metrics.PrometheusMetricsExporter
 import org.scriptonbasestar.kcexts.events.common.metrics.TimerSample
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -11,9 +12,12 @@ import java.util.concurrent.atomic.AtomicLong
  * Kafka Event Listener Metrics collector implementing common EventMetrics interface
  * Provides essential metrics for monitoring event processing with Kafka-specific features
  */
-class KafkaEventMetrics : EventMetrics {
+class KafkaEventMetrics(
+    private val prometheusExporter: PrometheusMetricsExporter? = null,
+) : EventMetrics {
     companion object {
         private val logger = Logger.getLogger(KafkaEventMetrics::class.java)
+        private const val LISTENER_TYPE = "kafka"
     }
 
     // Basic counters
@@ -47,6 +51,9 @@ class KafkaEventMetrics : EventMetrics {
         val key = "$eventType:$realm:$destination"
         eventsByType.computeIfAbsent(key) { AtomicLong(0) }.incrementAndGet()
 
+        // Export to Prometheus
+        prometheusExporter?.recordEventSent(eventType, realm, destination, sizeBytes, LISTENER_TYPE)
+
         logger.trace("Event sent recorded: type=$eventType, realm=$realm, destination=$destination, size=$sizeBytes")
     }
 
@@ -64,6 +71,9 @@ class KafkaEventMetrics : EventMetrics {
         // Track errors by type for common interface
         val key = "$eventType:$realm:$destination:$errorType"
         errorsByType.computeIfAbsent(key) { AtomicLong(0) }.incrementAndGet()
+
+        // Export to Prometheus
+        prometheusExporter?.recordEventFailed(eventType, realm, destination, errorType, LISTENER_TYPE)
 
         logger.debug("Event failure recorded: type=$eventType, realm=$realm, destination=$destination, error=$errorType")
     }
@@ -84,6 +94,9 @@ class KafkaEventMetrics : EventMetrics {
         eventDurations.computeIfAbsent(eventType) { AtomicLong(0) }.addAndGet(duration)
         eventDurationCounts.computeIfAbsent(eventType) { AtomicLong(0) }.incrementAndGet()
 
+        // Export to Prometheus (convert nanoseconds to seconds)
+        prometheusExporter?.recordEventDuration(eventType, LISTENER_TYPE, duration / 1_000_000_000.0)
+
         logger.trace("Event processing completed: type=$eventType, duration=${duration / 1_000_000}ms")
     }
 
@@ -92,6 +105,7 @@ class KafkaEventMetrics : EventMetrics {
      */
     fun updateConnectionStatus(connected: Boolean) {
         connectionStatus.set(if (connected) 1 else 0)
+        prometheusExporter?.updateConnectionStatus(LISTENER_TYPE, connected)
         logger.debug("Kafka connection status updated: $connected")
     }
 

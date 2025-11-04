@@ -13,6 +13,11 @@ dependencies {
     // Logging
     implementation libs.bundles.logging
 
+    // Prometheus Metrics
+    implementation libs.prometheus.client
+    implementation libs.prometheus.hotspot
+    implementation libs.prometheus.httpserver
+
     // Testing
     testImplementation libs.bundles.testing
 }

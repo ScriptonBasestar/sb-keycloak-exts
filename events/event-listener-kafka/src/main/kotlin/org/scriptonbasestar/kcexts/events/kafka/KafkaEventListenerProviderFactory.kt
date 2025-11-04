@@ -6,15 +6,15 @@ import org.keycloak.events.EventListenerProvider
 import org.keycloak.events.EventListenerProviderFactory
 import org.keycloak.models.KeycloakSession
 import org.keycloak.models.KeycloakSessionFactory
+import org.scriptonbasestar.kcexts.events.common.metrics.PrometheusMetricsExporter
 import org.scriptonbasestar.kcexts.events.kafka.metrics.KafkaEventMetrics
-// import org.scriptonbasestar.kcexts.events.kafka.metrics.PrometheusMetricsExporter
 import java.util.concurrent.ConcurrentHashMap
 
 class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(KafkaEventListenerProviderFactory::class.java)
     private val producerManagers = ConcurrentHashMap<String, KafkaProducerManager>()
 
-    // private var metricsExporter: PrometheusMetricsExporter? = null
+    private var metricsExporter: PrometheusMetricsExporter? = null
     private lateinit var metrics: KafkaEventMetrics
 
     override fun create(session: KeycloakSession): EventListenerProvider =
@@ -47,9 +47,27 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
             "Configuration loaded - bootstrapServers: $bootstrapServers, eventTopic: $eventTopic, adminEventTopic: $adminEventTopic, clientId: $clientId",
         )
 
-        // Initialize basic metrics (Prometheus disabled temporarily)
-        metrics = KafkaEventMetrics()
-        logger.info("Basic metrics collection enabled (Prometheus exporter disabled)")
+        // Initialize Prometheus metrics exporter if enabled
+        val enablePrometheus = config.getBoolean("enablePrometheus", false)
+        val prometheusPort = config.getInt("prometheusPort", 9090)
+        val enableJvmMetrics = config.getBoolean("enableJvmMetrics", true)
+
+        if (enablePrometheus) {
+            try {
+                metricsExporter = PrometheusMetricsExporter(prometheusPort, enableJvmMetrics)
+                metricsExporter?.start()
+                logger.info("Prometheus metrics exporter started on port $prometheusPort")
+            } catch (e: Exception) {
+                logger.error("Failed to start Prometheus metrics exporter", e)
+                metricsExporter = null
+            }
+        } else {
+            logger.info("Prometheus metrics exporter is disabled")
+        }
+
+        // Initialize metrics with optional Prometheus exporter
+        metrics = KafkaEventMetrics(metricsExporter)
+        logger.info("Kafka metrics collection enabled")
     }
 
     override fun postInit(factory: KeycloakSessionFactory) {
@@ -68,8 +86,9 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
         }
         producerManagers.clear()
 
-        // Cleanup basic metrics
-        logger.info("Basic metrics cleanup completed")
+        // Stop Prometheus exporter
+        metricsExporter?.stop()
+        logger.info("Metrics cleanup completed")
 
         logger.info("KafkaEventListenerProviderFactory closed successfully")
     }
