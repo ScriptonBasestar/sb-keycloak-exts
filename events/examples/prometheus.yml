@@ -1,0 +1,56 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'keycloak-dev'
+    env: 'development'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+# rule_files:
+#   - "alerts.yml"
+
+scrape_configs:
+  # Keycloak Kafka Event Listener
+  - job_name: 'keycloak-kafka-events'
+    static_configs:
+      - targets: ['keycloak:9090']
+        labels:
+          service: 'keycloak'
+          listener: 'kafka'
+          instance: 'keycloak-1'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Keycloak RabbitMQ Event Listener
+  - job_name: 'keycloak-rabbitmq-events'
+    static_configs:
+      - targets: ['keycloak:9091']
+        labels:
+          service: 'keycloak'
+          listener: 'rabbitmq'
+          instance: 'keycloak-1'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Keycloak NATS Event Listener
+  - job_name: 'keycloak-nats-events'
+    static_configs:
+      - targets: ['keycloak:9092']
+        labels:
+          service: 'keycloak'
+          listener: 'nats'
+          instance: 'keycloak-1'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

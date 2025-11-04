@@ -14,7 +14,12 @@ Keycloak 이벤트를 Apache Kafka로 실시간 전송하는 이벤트 리스너
 - ✅ 토픽별 분리 전송 (사용자/관리 이벤트)
 - ✅ JSON 형태 구조화된 데이터 전송
 - ✅ 비동기 처리로 Keycloak 성능 영향 최소화
-- ✅ 재시도 및 에러 처리
+- ✅ **Resilience Patterns** (v0.0.2+)
+  - **Circuit Breaker**: 장애 전파 방지
+  - **Retry Policy**: 지수 백오프 자동 재시도
+  - **Dead Letter Queue**: 실패 이벤트 저장 및 재처리
+  - **Batch Processing**: 배치 처리로 처리량 향상
+  - **Prometheus Metrics**: 운영 메트릭 수집
 
 ## 요구사항
 
@@ -74,6 +79,50 @@ Realm의 **Attributes** 탭에서 다음 설정을 추가:
 | `kafka.enable.user.events` | 사용자 이벤트 활성화 | `true` | `true/false` |
 | `kafka.enable.admin.events` | 관리 이벤트 활성화 | `true` | `true/false` |
 | `kafka.included.event.types` | 포함할 이벤트 타입 | 모든 타입 | `LOGIN,LOGOUT,REGISTER` |
+
+### Resilience Patterns 설정
+
+#### Circuit Breaker (장애 전파 방지)
+
+| 속성 키 | 설명 | 기본값 |
+|---------|------|---------|
+| `kafka.enableCircuitBreaker` | Circuit Breaker 활성화 | `true` |
+| `kafka.circuitBreakerFailureThreshold` | Circuit 오픈 임계값 | `5` |
+| `kafka.circuitBreakerOpenTimeoutSeconds` | Circuit 재시도 대기시간(초) | `60` |
+
+#### Retry Policy (자동 재시도)
+
+| 속성 키 | 설명 | 기본값 |
+|---------|------|---------|
+| `kafka.enableRetry` | 재시도 활성화 | `true` |
+| `kafka.maxRetryAttempts` | 최대 재시도 횟수 | `3` |
+| `kafka.retryInitialDelayMs` | 초기 재시도 지연(ms) | `100` |
+| `kafka.retryMaxDelayMs` | 최대 재시도 지연(ms) | `10000` |
+
+#### Dead Letter Queue (실패 이벤트 저장)
+
+| 속성 키 | 설명 | 기본값 |
+|---------|------|---------|
+| `kafka.enableDeadLetterQueue` | DLQ 활성화 | `true` |
+| `kafka.dlqMaxSize` | DLQ 최대 크기 | `10000` |
+| `kafka.dlqPersistToFile` | 파일 저장 활성화 | `false` |
+| `kafka.dlqPath` | DLQ 파일 경로 | `./dlq/kafka` |
+
+#### Batch Processing (배치 처리)
+
+| 속성 키 | 설명 | 기본값 |
+|---------|------|---------|
+| `kafka.enableBatching` | 배치 처리 활성화 | `false` |
+| `kafka.batchSize` | 배치 크기 | `100` |
+| `kafka.batchFlushIntervalMs` | 배치 플러시 간격(ms) | `5000` |
+
+#### Prometheus Metrics (메트릭 수집)
+
+| 속성 키 | 설명 | 기본값 |
+|---------|------|---------|
+| `kafka.enablePrometheus` | Prometheus 메트릭 활성화 | `true` |
+| `kafka.prometheusPort` | 메트릭 HTTP 포트 | `9090` |
+| `kafka.enableJvmMetrics` | JVM 메트릭 포함 | `true` |
 
 ### 시스템 프로퍼티 설정 (선택사항)
 
@@ -200,6 +249,62 @@ kafka.included.event.types=LOGIN,LOGOUT
 
 # 에러 이벤트만 전송  
 kafka.included.event.types=LOGIN_ERROR,INVALID_USER_CREDENTIALS
+```
+
+## Resilience Patterns 상세 가이드
+
+상세한 resilience patterns 설정 및 사용법은 다음 문서를 참고하세요:
+- [Resilience Patterns 완전 가이드](../RESILIENCE_PATTERNS.md)
+- [Prometheus 메트릭 가이드](../event-listener-common/PROMETHEUS.md)
+- [Grafana 대시보드](../grafana-dashboard.json)
+
+### 빠른 시작: 프로덕션 설정
+
+```xml
+<spi name="eventsListener">
+    <provider name="kafka-event-listener" enabled="true">
+        <properties>
+            <!-- Kafka 기본 설정 -->
+            <property name="bootstrapServers" value="kafka1:9092,kafka2:9092,kafka3:9092"/>
+            <property name="eventTopic" value="keycloak-events"/>
+            <property name="adminEventTopic" value="keycloak-admin-events"/>
+
+            <!-- Resilience Patterns -->
+            <property name="enableCircuitBreaker" value="true"/>
+            <property name="circuitBreakerFailureThreshold" value="5"/>
+            <property name="circuitBreakerOpenTimeoutSeconds" value="60"/>
+
+            <property name="enableRetry" value="true"/>
+            <property name="maxRetryAttempts" value="3"/>
+            <property name="retryInitialDelayMs" value="100"/>
+            <property name="retryMaxDelayMs" value="10000"/>
+
+            <property name="enableDeadLetterQueue" value="true"/>
+            <property name="dlqMaxSize" value="10000"/>
+            <property name="dlqPersistToFile" value="true"/>
+            <property name="dlqPath" value="/var/keycloak/dlq/kafka"/>
+
+            <property name="enableBatching" value="false"/>
+
+            <!-- Prometheus -->
+            <property name="enablePrometheus" value="true"/>
+            <property name="prometheusPort" value="9090"/>
+        </properties>
+    </provider>
+</spi>
+```
+
+### Prometheus 메트릭 확인
+
+```bash
+# 메트릭 엔드포인트 확인
+curl http://localhost:9090/metrics
+
+# 주요 메트릭
+# - keycloak_events_total: 총 이벤트 수
+# - keycloak_events_failed_total: 실패 이벤트 수
+# - keycloak_circuit_breaker_state: Circuit Breaker 상태
+# - keycloak_dlq_size: DLQ 크기
 ```
 
 ## 라이센스

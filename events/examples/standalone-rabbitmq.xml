@@ -1,0 +1,66 @@
+<!-- Keycloak Standalone Configuration with RabbitMQ Event Listener -->
+<!-- This is a partial configuration showing only the event listener SPI section -->
+<!-- Add this to your standalone.xml or standalone-ha.xml -->
+
+<spi name="eventsListener">
+    <provider name="rabbitmq-event-listener" enabled="true">
+        <properties>
+            <!-- RabbitMQ Connection -->
+            <property name="host" value="localhost"/>
+            <property name="port" value="5672"/>
+            <property name="username" value="guest"/>
+            <property name="password" value="guest"/>
+            <property name="virtualHost" value="/"/>
+            <property name="useSsl" value="false"/>
+
+            <!-- Exchange and Routing -->
+            <property name="exchangeName" value="keycloak-events"/>
+            <property name="exchangeType" value="topic"/>
+            <property name="exchangeDurable" value="true"/>
+            <property name="queueDurable" value="true"/>
+            <property name="queueAutoDelete" value="false"/>
+            <property name="userEventRoutingKey" value="keycloak.event.user"/>
+            <property name="adminEventRoutingKey" value="keycloak.event.admin"/>
+
+            <!-- Event Filtering -->
+            <property name="enableUserEvents" value="true"/>
+            <property name="enableAdminEvents" value="true"/>
+            <property name="includedEventTypes" value=""/>
+
+            <!-- Connection Settings -->
+            <property name="connectionTimeout" value="60000"/>
+            <property name="requestedHeartbeat" value="60"/>
+            <property name="networkRecoveryInterval" value="5000"/>
+            <property name="automaticRecoveryEnabled" value="true"/>
+            <property name="publisherConfirms" value="true"/>
+            <property name="publisherConfirmTimeout" value="5000"/>
+
+            <!-- Circuit Breaker -->
+            <property name="enableCircuitBreaker" value="true"/>
+            <property name="circuitBreakerFailureThreshold" value="5"/>
+            <property name="circuitBreakerOpenTimeoutSeconds" value="60"/>
+
+            <!-- Retry Policy -->
+            <property name="enableRetry" value="true"/>
+            <property name="maxRetryAttempts" value="3"/>
+            <property name="retryInitialDelayMs" value="100"/>
+            <property name="retryMaxDelayMs" value="10000"/>
+
+            <!-- Dead Letter Queue -->
+            <property name="enableDeadLetterQueue" value="true"/>
+            <property name="dlqMaxSize" value="10000"/>
+            <property name="dlqPersistToFile" value="true"/>
+            <property name="dlqPath" value="./dlq/rabbitmq"/>
+
+            <!-- Batch Processing (optional, for high volume) -->
+            <property name="enableBatching" value="false"/>
+            <property name="batchSize" value="100"/>
+            <property name="batchFlushIntervalMs" value="5000"/>
+
+            <!-- Prometheus Metrics -->
+            <property name="enablePrometheus" value="true"/>
+            <property name="prometheusPort" value="9091"/>
+            <property name="enableJvmMetrics" value="true"/>
+        </properties>
+    </provider>
+</spi>

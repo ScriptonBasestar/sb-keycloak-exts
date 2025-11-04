@@ -1,0 +1,340 @@
+{
+  "dashboard": {
+    "title": "Keycloak Event Listeners - Resilience Monitoring",
+    "tags": ["keycloak", "events", "resilience"],
+    "timezone": "browser",
+    "schemaVersion": 27,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Event Throughput (per second)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(keycloak_events_total[1m])",
+            "legendFormat": "{{listener}} - {{event_type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "ops", "label": "Events/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Failure Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(keycloak_events_failed_total[1m]) / rate(keycloak_events_total[1m])",
+            "legendFormat": "{{listener}} - {{error_type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percentunit", "label": "Failure Rate", "max": 1, "min": 0},
+          {"format": "short"}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0.1], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "High Failure Rate",
+          "noDataState": "no_data"
+        }
+      },
+      {
+        "id": 3,
+        "title": "Circuit Breaker State",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "keycloak_circuit_breaker_state",
+            "legendFormat": "{{listener}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "0", "text": "CLOSED", "color": "green"},
+              {"type": "value", "value": "1", "text": "OPEN", "color": "red"},
+              {"type": "value", "value": "2", "text": "HALF_OPEN", "color": "yellow"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "red"},
+                {"value": 2, "color": "yellow"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Dead Letter Queue Size",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
+        "targets": [
+          {
+            "expr": "keycloak_dlq_size",
+            "legendFormat": "{{listener}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5000, "color": "yellow"},
+                {"value": 9000, "color": "red"}
+              ]
+            },
+            "max": 10000
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Batch Buffer Size",
+        "type": "graph",
+        "gridPos": {"h": 4, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "keycloak_batch_processor_buffer_size",
+            "legendFormat": "{{listener}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Events in Buffer"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Event Processing Latency (p50, p95, p99)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(keycloak_events_processing_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50 - {{listener}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(keycloak_events_processing_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95 - {{listener}}",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(keycloak_events_processing_duration_seconds_bucket[5m]))",
+            "legendFormat": "p99 - {{listener}}",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Event Size Distribution",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(keycloak_events_size_bytes_bucket[5m]))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(keycloak_events_size_bytes_bucket[5m]))",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(keycloak_events_size_bytes_bucket[5m]))",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "bytes", "label": "Size"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Events by Type",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "sum by (event_type) (increase(keycloak_events_total[1h]))",
+            "legendFormat": "{{event_type}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Events by Realm",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+        "targets": [
+          {
+            "expr": "sum by (realm) (increase(keycloak_events_total[1h]))",
+            "legendFormat": "{{realm}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "JVM Heap Usage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{area=\"heap\"}",
+            "legendFormat": "Used",
+            "refId": "A"
+          },
+          {
+            "expr": "jvm_memory_max_bytes{area=\"heap\"}",
+            "legendFormat": "Max",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "bytes", "label": "Memory"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 11,
+        "title": "GC Activity",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+        "targets": [
+          {
+            "expr": "rate(jvm_gc_collection_seconds_sum[1m])",
+            "legendFormat": "{{gc}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "GC Time/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Error Breakdown",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 36},
+        "targets": [
+          {
+            "expr": "sum by (listener, event_type, error_type) (increase(keycloak_events_failed_total[1h]))",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "indexByName": {
+                "listener": 0,
+                "event_type": 1,
+                "error_type": 2,
+                "Value": 3
+              },
+              "renameByName": {
+                "listener": "Listener",
+                "event_type": "Event Type",
+                "error_type": "Error Type",
+                "Value": "Failed Count"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus",
+          "current": {
+            "text": "Prometheus",
+            "value": "Prometheus"
+          }
+        },
+        {
+          "name": "listener",
+          "type": "query",
+          "datasource": "$datasource",
+          "query": "label_values(keycloak_events_total, listener)",
+          "multi": true,
+          "includeAll": true,
+          "current": {
+            "text": "All",
+            "value": ["$__all"]
+          }
+        },
+        {
+          "name": "realm",
+          "type": "query",
+          "datasource": "$datasource",
+          "query": "label_values(keycloak_events_total, realm)",
+          "multi": true,
+          "includeAll": true,
+          "current": {
+            "text": "All",
+            "value": ["$__all"]
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "datasource": "$datasource",
+          "enable": true,
+          "expr": "ALERTS{alertname=\"CircuitBreakerOpen\", alertstate=\"firing\"}",
+          "iconColor": "red",
+          "name": "Circuit Breaker Alerts",
+          "step": "60s",
+          "tagKeys": "listener",
+          "textFormat": "Circuit Breaker Open: {{listener}}",
+          "titleFormat": "Alert"
+        }
+      ]
+    }
+  }
+}

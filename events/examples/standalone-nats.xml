@@ -1,0 +1,59 @@
+<!-- Keycloak Standalone Configuration with NATS Event Listener -->
+<!-- This is a partial configuration showing only the event listener SPI section -->
+<!-- Add this to your standalone.xml or standalone-ha.xml -->
+
+<spi name="eventsListener">
+    <provider name="nats-event-listener" enabled="true">
+        <properties>
+            <!-- NATS Connection -->
+            <property name="serverUrl" value="nats://localhost:4222"/>
+            <property name="username" value=""/>
+            <property name="password" value=""/>
+            <property name="token" value=""/>
+            <property name="useTls" value="false"/>
+
+            <!-- Subject Configuration -->
+            <property name="userEventSubject" value="keycloak.events.user"/>
+            <property name="adminEventSubject" value="keycloak.events.admin"/>
+
+            <!-- Event Filtering -->
+            <property name="enableUserEvents" value="true"/>
+            <property name="enableAdminEvents" value="true"/>
+            <property name="includedEventTypes" value=""/>
+
+            <!-- Connection Settings -->
+            <property name="connectionTimeout" value="60000"/>
+            <property name="maxReconnects" value="-1"/>
+            <property name="reconnectWait" value="2000"/>
+            <property name="noEcho" value="false"/>
+            <property name="maxPingsOut" value="2"/>
+
+            <!-- Circuit Breaker -->
+            <property name="enableCircuitBreaker" value="true"/>
+            <property name="circuitBreakerFailureThreshold" value="5"/>
+            <property name="circuitBreakerOpenTimeoutSeconds" value="60"/>
+
+            <!-- Retry Policy -->
+            <property name="enableRetry" value="true"/>
+            <property name="maxRetryAttempts" value="3"/>
+            <property name="retryInitialDelayMs" value="100"/>
+            <property name="retryMaxDelayMs" value="10000"/>
+
+            <!-- Dead Letter Queue -->
+            <property name="enableDeadLetterQueue" value="true"/>
+            <property name="dlqMaxSize" value="10000"/>
+            <property name="dlqPersistToFile" value="true"/>
+            <property name="dlqPath" value="./dlq/nats"/>
+
+            <!-- Batch Processing (optional, for high volume) -->
+            <property name="enableBatching" value="false"/>
+            <property name="batchSize" value="100"/>
+            <property name="batchFlushIntervalMs" value="5000"/>
+
+            <!-- Prometheus Metrics -->
+            <property name="enablePrometheus" value="true"/>
+            <property name="prometheusPort" value="9092"/>
+            <property name="enableJvmMetrics" value="true"/>
+        </properties>
+    </provider>
+</spi>
