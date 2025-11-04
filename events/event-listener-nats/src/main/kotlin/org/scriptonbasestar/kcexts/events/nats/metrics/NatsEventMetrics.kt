@@ -3,6 +3,7 @@ package org.scriptonbasestar.kcexts.events.nats.metrics
 import org.jboss.logging.Logger
 import org.scriptonbasestar.kcexts.events.common.metrics.EventMetrics
 import org.scriptonbasestar.kcexts.events.common.metrics.MetricsSummary
+import org.scriptonbasestar.kcexts.events.common.metrics.PrometheusMetricsExporter
 import org.scriptonbasestar.kcexts.events.common.metrics.TimerSample
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -10,9 +11,12 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * NATS Event Listener Metrics collector implementing common EventMetrics interface
  */
-class NatsEventMetrics : EventMetrics {
+class NatsEventMetrics(
+    private val prometheusExporter: PrometheusMetricsExporter? = null,
+) : EventMetrics {
     companion object {
         private val logger = Logger.getLogger(NatsEventMetrics::class.java)
+        private const val LISTENER_TYPE = "nats"
     }
 
     private val eventsSent = ConcurrentHashMap<String, AtomicLong>()
@@ -28,6 +32,10 @@ class NatsEventMetrics : EventMetrics {
     ) {
         val key = "$eventType:$realm:$destination"
         eventsSent.computeIfAbsent(key) { AtomicLong(0) }.incrementAndGet()
+
+        // Export to Prometheus
+        prometheusExporter?.recordEventSent(eventType, realm, destination, sizeBytes, LISTENER_TYPE)
+
         logger.trace("Event sent: type=$eventType, realm=$realm, destination=$destination, size=$sizeBytes")
     }
 
@@ -39,6 +47,10 @@ class NatsEventMetrics : EventMetrics {
     ) {
         val key = "$eventType:$realm:$destination:$errorType"
         eventsFailed.computeIfAbsent(key) { AtomicLong(0) }.incrementAndGet()
+
+        // Export to Prometheus
+        prometheusExporter?.recordEventFailed(eventType, realm, destination, errorType, LISTENER_TYPE)
+
         logger.warn("Event failed: type=$eventType, realm=$realm, destination=$destination, error=$errorType")
     }
 
@@ -51,6 +63,10 @@ class NatsEventMetrics : EventMetrics {
         val duration = System.nanoTime() - sample.startTime
         eventDurations.computeIfAbsent(eventType) { AtomicLong(0) }.addAndGet(duration)
         eventDurationCounts.computeIfAbsent(eventType) { AtomicLong(0) }.incrementAndGet()
+
+        // Export to Prometheus (convert nanoseconds to seconds)
+        prometheusExporter?.recordEventDuration(eventType, LISTENER_TYPE, duration / 1_000_000_000.0)
+
         logger.trace("Event completed: type=$eventType, duration=${duration / 1_000_000}ms")
     }
 

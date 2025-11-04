@@ -6,6 +6,7 @@ import org.keycloak.events.EventListenerProvider
 import org.keycloak.events.EventListenerProviderFactory
 import org.keycloak.models.KeycloakSession
 import org.keycloak.models.KeycloakSessionFactory
+import org.scriptonbasestar.kcexts.events.common.metrics.PrometheusMetricsExporter
 import org.scriptonbasestar.kcexts.events.rabbitmq.metrics.RabbitMQEventMetrics
 import java.util.concurrent.ConcurrentHashMap
 
@@ -13,6 +14,7 @@ class RabbitMQEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(RabbitMQEventListenerProviderFactory::class.java)
     private val connectionManagers = ConcurrentHashMap<String, RabbitMQConnectionManager>()
 
+    private var metricsExporter: PrometheusMetricsExporter? = null
     private lateinit var metrics: RabbitMQEventMetrics
     private lateinit var defaultConfig: RabbitMQEventListenerConfig
 
@@ -72,8 +74,26 @@ class RabbitMQEventListenerProviderFactory : EventListenerProviderFactory {
                 "virtualHost: ${defaultConfig.virtualHost}",
         )
 
-        // Initialize metrics
-        metrics = RabbitMQEventMetrics()
+        // Initialize Prometheus metrics exporter if enabled
+        val enablePrometheus = config.getBoolean("enablePrometheus", false)
+        val prometheusPort = config.getInt("prometheusPort", 9091)
+        val enableJvmMetrics = config.getBoolean("enableJvmMetrics", true)
+
+        if (enablePrometheus) {
+            try {
+                metricsExporter = PrometheusMetricsExporter(prometheusPort, enableJvmMetrics)
+                metricsExporter?.start()
+                logger.info("Prometheus metrics exporter started on port $prometheusPort")
+            } catch (e: Exception) {
+                logger.error("Failed to start Prometheus metrics exporter", e)
+                metricsExporter = null
+            }
+        } else {
+            logger.info("Prometheus metrics exporter is disabled")
+        }
+
+        // Initialize metrics with optional Prometheus exporter
+        metrics = RabbitMQEventMetrics(metricsExporter)
         logger.info("RabbitMQ metrics collection enabled")
     }
 
@@ -92,6 +112,10 @@ class RabbitMQEventListenerProviderFactory : EventListenerProviderFactory {
             }
         }
         connectionManagers.clear()
+
+        // Stop Prometheus exporter
+        metricsExporter?.stop()
+        logger.info("Metrics cleanup completed")
 
         logger.info("RabbitMQEventListenerProviderFactory closed successfully")
     }

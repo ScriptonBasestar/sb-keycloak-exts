@@ -6,6 +6,7 @@ import org.keycloak.events.EventListenerProvider
 import org.keycloak.events.EventListenerProviderFactory
 import org.keycloak.models.KeycloakSession
 import org.keycloak.models.KeycloakSessionFactory
+import org.scriptonbasestar.kcexts.events.common.metrics.PrometheusMetricsExporter
 import org.scriptonbasestar.kcexts.events.nats.metrics.NatsEventMetrics
 import java.util.concurrent.ConcurrentHashMap
 
@@ -13,6 +14,7 @@ class NatsEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(NatsEventListenerProviderFactory::class.java)
     private val connectionManagers = ConcurrentHashMap<String, NatsConnectionManager>()
 
+    private var metricsExporter: PrometheusMetricsExporter? = null
     private lateinit var metrics: NatsEventMetrics
     private lateinit var defaultConfig: NatsEventListenerConfig
 
@@ -64,8 +66,26 @@ class NatsEventListenerProviderFactory : EventListenerProviderFactory {
                 "adminSubject: ${defaultConfig.adminEventSubject}",
         )
 
-        // Initialize metrics
-        metrics = NatsEventMetrics()
+        // Initialize Prometheus metrics exporter if enabled
+        val enablePrometheus = config.getBoolean("enablePrometheus", false)
+        val prometheusPort = config.getInt("prometheusPort", 9092)
+        val enableJvmMetrics = config.getBoolean("enableJvmMetrics", true)
+
+        if (enablePrometheus) {
+            try {
+                metricsExporter = PrometheusMetricsExporter(prometheusPort, enableJvmMetrics)
+                metricsExporter?.start()
+                logger.info("Prometheus metrics exporter started on port $prometheusPort")
+            } catch (e: Exception) {
+                logger.error("Failed to start Prometheus metrics exporter", e)
+                metricsExporter = null
+            }
+        } else {
+            logger.info("Prometheus metrics exporter is disabled")
+        }
+
+        // Initialize metrics with optional Prometheus exporter
+        metrics = NatsEventMetrics(metricsExporter)
         logger.info("NATS metrics collection enabled")
     }
 
@@ -84,6 +104,10 @@ class NatsEventListenerProviderFactory : EventListenerProviderFactory {
             }
         }
         connectionManagers.clear()
+
+        // Stop Prometheus exporter
+        metricsExporter?.stop()
+        logger.info("Metrics cleanup completed")
 
         logger.info("NatsEventListenerProviderFactory closed successfully")
     }

@@ -3,12 +3,18 @@ package org.scriptonbasestar.kcexts.events.rabbitmq.metrics
 import org.jboss.logging.Logger
 import org.scriptonbasestar.kcexts.events.common.metrics.EventMetrics
 import org.scriptonbasestar.kcexts.events.common.metrics.MetricsSummary
+import org.scriptonbasestar.kcexts.events.common.metrics.PrometheusMetricsExporter
 import org.scriptonbasestar.kcexts.events.common.metrics.TimerSample
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-class RabbitMQEventMetrics : EventMetrics {
-    private val logger = Logger.getLogger(RabbitMQEventMetrics::class.java)
+class RabbitMQEventMetrics(
+    private val prometheusExporter: PrometheusMetricsExporter? = null,
+) : EventMetrics {
+    companion object {
+        private val logger = Logger.getLogger(RabbitMQEventMetrics::class.java)
+        private const val LISTENER_TYPE = "rabbitmq"
+    }
 
     private val eventsSent = ConcurrentHashMap<String, AtomicLong>()
     private val eventsFailed = ConcurrentHashMap<String, AtomicLong>()
@@ -24,6 +30,11 @@ class RabbitMQEventMetrics : EventMetrics {
         val key = "$eventType:$realm:$destination"
         eventsSent.computeIfAbsent(key) { AtomicLong(0) }.incrementAndGet()
         eventSizes.computeIfAbsent(key) { AtomicLong(0) }.addAndGet(sizeBytes.toLong())
+
+        // Export to Prometheus
+        prometheusExporter?.recordEventSent(eventType, realm, destination, sizeBytes, LISTENER_TYPE)
+
+        logger.trace("Event sent recorded: type=$eventType, realm=$realm, destination=$destination, size=$sizeBytes")
     }
 
     override fun recordEventFailed(
@@ -34,6 +45,11 @@ class RabbitMQEventMetrics : EventMetrics {
     ) {
         val key = "$eventType:$realm:$destination:$errorType"
         eventsFailed.computeIfAbsent(key) { AtomicLong(0) }.incrementAndGet()
+
+        // Export to Prometheus
+        prometheusExporter?.recordEventFailed(eventType, realm, destination, errorType, LISTENER_TYPE)
+
+        logger.debug("Event failure recorded: type=$eventType, realm=$realm, destination=$destination, error=$errorType")
     }
 
     override fun startTimer(): TimerSample = TimerSample(System.nanoTime())
@@ -44,6 +60,11 @@ class RabbitMQEventMetrics : EventMetrics {
     ) {
         val duration = System.nanoTime() - sample.startTime
         eventDurations.computeIfAbsent(eventType) { AtomicLong(0) }.addAndGet(duration)
+
+        // Export to Prometheus (convert nanoseconds to seconds)
+        prometheusExporter?.recordEventDuration(eventType, LISTENER_TYPE, duration / 1_000_000_000.0)
+
+        logger.trace("Event processing completed: type=$eventType, duration=${duration / 1_000_000}ms")
     }
 
     override fun getMetricsSummary(): MetricsSummary {
