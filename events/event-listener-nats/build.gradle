@@ -1,0 +1,33 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jlleitschuh.gradle.ktlint'
+}
+
+description = 'Keycloak Event Listener for NATS'
+
+dependencies {
+    // Common Event Listener Module
+    implementation project(':events:event-listener-common')
+
+    // Keycloak SPI (provided by Keycloak at runtime)
+    compileOnly libs.keycloak.server.spi
+    compileOnly libs.keycloak.server.spi.private
+
+    // NATS Client
+    implementation 'io.nats:jnats:2.20.6'
+
+    // JSON Processing
+    implementation libs.bundles.jackson
+
+    // Logging
+    implementation libs.bundles.logging
+
+    // Test Dependencies
+    testImplementation libs.bundles.testing
+    testImplementation libs.testcontainers.core
+    testImplementation libs.testcontainers.junit
+}
+
+test {
+    useJUnitPlatform()
+}
