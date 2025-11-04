@@ -48,6 +48,8 @@ hikari = "6.3.2"
 # Messaging
 kafka = "3.9.1"
 rabbitmq = "5.27.0"
+lettuce = "6.5.2.RELEASE"
+nats = "2.20.5"
 
 [libraries]
 # Kotlin
@@ -105,6 +107,8 @@ hikari-cp = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
 # Messaging
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
 rabbitmq-client = { module = "com.rabbitmq:amqp-client", version.ref = "rabbitmq" }
+lettuce-core = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
+nats-client = { module = "io.nats:jnats", version.ref = "nats" }
 
 [bundles]
 kotlin = ["kotlin-reflect", "kotlin-stdlib", "kotlin-test", "kotlin-coroutines-core"]
