@@ -138,6 +138,78 @@ data class TimerSample(
 )
 ```
 
+### 3. Configuration Loader (`config/`)
+
+통합 설정 로더로, 여러 설정 소스를 우선순위에 따라 조회합니다.
+
+#### ConfigLoader
+
+다음 우선순위로 설정값을 조회합니다:
+1. **Realm Attributes** (실행 시점, Realm별)
+2. **Config.Scope** (초기화 시점, 전역)
+3. **System Properties**
+4. **기본값**
+
+```kotlin
+class ConfigLoader(
+    private val session: KeycloakSession?,
+    private val configScope: Config.Scope?,
+    private val prefix: String
+)
+```
+
+**초기화 시점 설정 (전역):**
+```kotlin
+override fun init(config: Config.Scope) {
+    val loader = ConfigLoader.forInitTime(config, "kafka")
+    val bootstrapServers = loader.getString("bootstrap.servers", "localhost:9092")
+    val enableUserEvents = loader.getBoolean("enable.user.events", true)
+}
+```
+
+**실행 시점 설정 (Realm별):**
+```kotlin
+override fun create(session: KeycloakSession): EventListenerProvider {
+    val loader = ConfigLoader.forRuntime(session, savedConfigScope, "kafka")
+    val bootstrapServers = loader.getString("bootstrap.servers", "localhost:9092")
+    // Realm Attributes가 있으면 해당 값 사용, 없으면 Config.Scope → System Properties → 기본값
+}
+```
+
+**지원 메서드:**
+- `getString(key, default)`: 문자열 값 조회
+- `getRequiredString(key)`: 필수 문자열 값 조회 (없으면 예외)
+- `getInt(key, default)`: 정수 값 조회
+- `getLong(key, default)`: Long 값 조회
+- `getBoolean(key, default)`: Boolean 값 조회
+- `getStringList(key, default)`: 콤마로 구분된 리스트 조회
+- `getStringSet(key, default)`: 콤마로 구분된 Set 조회
+
+**설정 예시:**
+
+Realm Attributes에서 설정 (Admin Console):
+```
+kafka.bootstrap.servers = prod-kafka:9092
+kafka.event.topic = prod-events
+```
+
+standalone.xml에서 전역 설정:
+```xml
+<spi name="eventsListener">
+    <provider name="kafka-event-listener">
+        <properties>
+            <property name="bootstrapServers" value="localhost:9092"/>
+            <property name="eventTopic" value="keycloak-events"/>
+        </properties>
+    </provider>
+</spi>
+```
+
+System Properties:
+```bash
+-Dkafka.bootstrap.servers=localhost:9092
+```
+
 ## 의존성
 
 ```gradle
