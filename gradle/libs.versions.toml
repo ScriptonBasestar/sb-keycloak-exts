@@ -1,15 +1,15 @@
 [versions]
 # JVM & Kotlin
 java = "21"
-kotlin = "2.1.0"
+kotlin = "2.2.21"
 kotlin-coroutines = "1.10.2"
-groovy = "4.0.29"
+groovy = "5.0.2"
 
 # Keycloak
 keycloak = "26.0.7"
 
 # Build Tools
-gradle = "8.11"
+gradle = "9.2"
 shadow = "8.1.1"
 asciidoctor = "4.0.5"
 protobuf = "0.9.5"
@@ -18,31 +18,34 @@ nemerosa-versioning = "3.1.0"
 # Code Quality
 ktlint-plugin = "13.1.0"
 ktlint = "1.7.1"
+# WARNING: Detekt 1.23.7 only supports Kotlin 2.0.21, incompatible with Kotlin 2.2.21
+# Detekt may produce false positives or errors with Kotlin 2.2+
+# Waiting for Detekt 2.x release for full Kotlin 2.2 support
 detekt = "1.23.7"
 dependency-check = "11.1.0"
 
 # Testing
-junit = "5.11.4"
-assertj = "3.26.3"
-mockito = "5.14.2"
+junit = "5.12.2"
+assertj = "3.27.6"
+mockito = "5.20.0"
 mockito-kotlin = "5.4.0"
-testcontainers = "1.20.4"
+testcontainers = "1.21.1"
 
 # Enterprise Features
-jackson = "2.18.2"
-logback = "1.5.12"
-micrometer = "1.14.2"
+jackson = "2.18.5"
+logback = "1.5.20"
+micrometer = "1.14.11"
 prometheus = "0.16.0"
-slf4j = "2.0.16"
+slf4j = "2.0.17"
 
 # Database
-postgresql = "42.7.4"
-h2 = "2.3.232"
-hikari = "6.2.1"
+postgresql = "42.7.8"
+h2 = "2.4.240"
+hikari = "6.3.2"
 
 # Messaging
-kafka = "3.9.0"
-rabbitmq = "5.22.0"
+kafka = "3.9.1"
+rabbitmq = "5.27.0"
 
 [libraries]
 # Kotlin

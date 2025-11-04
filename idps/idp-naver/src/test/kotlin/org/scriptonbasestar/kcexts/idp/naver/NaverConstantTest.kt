@@ -31,6 +31,6 @@ class NaverConstantTest {
 
     @Test
     fun `should have correct default scope`() {
-        assertThat(NaverConstant.defaultScope).isEqualTo("profile email")
+        assertThat(NaverConstant.defaultScope).isEqualTo("name email profile_image")
     }
 }
