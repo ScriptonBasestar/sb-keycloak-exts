@@ -24,6 +24,7 @@ class AwsEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(AwsEventListenerProviderFactory::class.java)
     private val messagePublishers = ConcurrentHashMap<String, AwsMessagePublisher>()
 
+    private var initConfigScope: Config.Scope? = null
     private var metricsExporter: PrometheusMetricsExporter? = null
     private lateinit var metrics: AwsEventMetrics
     private lateinit var circuitBreaker: CircuitBreaker
@@ -33,7 +34,7 @@ class AwsEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun create(session: KeycloakSession): EventListenerProvider =
         try {
-            val config = AwsEventListenerConfig(session)
+            val config = AwsEventListenerConfig(session, initConfigScope)
             val publisher = getOrCreateMessagePublisher(config)
             AwsEventListenerProvider(
                 session,
@@ -60,6 +61,7 @@ class AwsEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun init(config: Config.Scope) {
         logger.info("Initializing AwsEventListenerProviderFactory")
+        initConfigScope = config
 
         // Initialize Prometheus metrics exporter
         val enablePrometheus = config.getBoolean("enablePrometheus", false)

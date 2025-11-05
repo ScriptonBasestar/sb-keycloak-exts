@@ -92,6 +92,8 @@ Azure Service Bus Queue/Topic 로 Keycloak 사용자/관리자 이벤트를 전�
 </spi>
 ```
 
+> ℹ️ 설정 우선순위는 Realm Attribute → SPI Config Scope(`standalone.xml`, `keycloak.conf`) → JVM System Property 순입니다. 동일한 `azure.*` 키를 사용하면 환경별로 손쉽게 오버라이드할 수 있습니다.
+
 > Managed Identity를 사용할 때는 Keycloak이 실행되는 VM/컨테이너가 Service Bus에 대해 `Azure Service Bus Data Sender` 역할을 가져야 하며, Queue/Topic이 미리 준비되어 있어야 합니다.
 
 ### 환경 변수 예시

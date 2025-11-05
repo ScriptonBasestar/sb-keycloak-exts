@@ -19,6 +19,7 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(KafkaEventListenerProviderFactory::class.java)
     private val producerManagers = ConcurrentHashMap<String, KafkaProducerManager>()
 
+    private var initConfigScope: Config.Scope? = null
     private var metricsExporter: PrometheusMetricsExporter? = null
     private lateinit var metrics: KafkaEventMetrics
     private lateinit var circuitBreaker: CircuitBreaker
@@ -28,7 +29,7 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun create(session: KeycloakSession): EventListenerProvider =
         try {
-            val config = KafkaEventListenerConfig(session)
+            val config = KafkaEventListenerConfig(session, initConfigScope)
             val producerManager = getOrCreateProducerManager(config)
             KafkaEventListenerProvider(
                 session,
@@ -55,6 +56,7 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun init(config: Config.Scope) {
         logger.info("Initializing KafkaEventListenerProviderFactory")
+        initConfigScope = config
 
         val bootstrapServers = config.get("bootstrapServers")
         val eventTopic = config.get("eventTopic")

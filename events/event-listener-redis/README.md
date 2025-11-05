@@ -66,6 +66,8 @@ Redis Streams 기반 Keycloak 이벤트 리스너 구현체입니다.
 </spi>
 ```
 
+> ℹ️ `redis.*` 키는 Realm Attribute → SPI Config Scope(`standalone.xml`, `keycloak.conf`) → JVM System Property 순으로 조회되므로 동일한 키를 원하는 환경 레벨에서 덮어쓸 수 있습니다.
+
 ### 환경 변수
 
 ```bash

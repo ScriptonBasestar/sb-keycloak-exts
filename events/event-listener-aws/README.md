@@ -79,6 +79,8 @@ AWS SQS 및 SNS 기반 Keycloak 이벤트 리스너 구현체입니다.
 </spi>
 ```
 
+> ℹ️ `aws.*` 키는 Realm Attribute → SPI Config Scope(`standalone.xml`, `keycloak.conf`) → JVM System Property 순으로 적용됩니다. 운영 환경에 맞는 레벨에서 같은 키를 덮어쓰면 됩니다.
+
 ### 환경 변수
 
 ```bash

@@ -1,114 +1,55 @@
 package org.scriptonbasestar.kcexts.events.azure.config
 
+import org.keycloak.Config
 import org.keycloak.events.EventType
 import org.keycloak.models.KeycloakSession
+import org.scriptonbasestar.kcexts.events.common.config.ConfigLoader
 
 /**
  * Configuration for Azure Service Bus Event Listener
  */
 class AzureEventListenerConfig(
     session: KeycloakSession,
+    configScope: Config.Scope?,
 ) {
+    companion object {
+        private const val PREFIX = "azure"
+    }
+
+    private val configLoader = ConfigLoader.forRuntime(session, configScope, PREFIX)
+
     // Azure 기본 설정
-    val connectionString: String
-    val useManagedIdentity: Boolean
-    val fullyQualifiedNamespace: String
-    val managedIdentityClientId: String?
+    val connectionString: String = configLoader.getString("servicebus.connection.string", "") ?: ""
+    val useManagedIdentity: Boolean = configLoader.getBoolean("use.managed.identity", false)
+    val fullyQualifiedNamespace: String = configLoader.getString("servicebus.namespace", "") ?: ""
+    val managedIdentityClientId: String? = configLoader.getString("managed.identity.client.id")
 
     // Queue 설정
-    val useQueue: Boolean
-    val userEventsQueueName: String
-    val adminEventsQueueName: String
+    val useQueue: Boolean = configLoader.getBoolean("use.queue", true)
+    val userEventsQueueName: String = configLoader.getString("queue.user.events", "keycloak-user-events") ?: "keycloak-user-events"
+    val adminEventsQueueName: String = configLoader.getString("queue.admin.events", "keycloak-admin-events") ?: "keycloak-admin-events"
 
     // Topic 설정
-    val useTopic: Boolean
-    val userEventsTopicName: String
-    val adminEventsTopicName: String
+    val useTopic: Boolean = configLoader.getBoolean("use.topic", false)
+    val userEventsTopicName: String = configLoader.getString("topic.user.events", "keycloak-user-events") ?: "keycloak-user-events"
+    val adminEventsTopicName: String = configLoader.getString("topic.admin.events", "keycloak-admin-events") ?: "keycloak-admin-events"
 
     // 이벤트 필터링
-    val includedEventTypes: Set<EventType>
-    val enableAdminEvents: Boolean
-    val enableUserEvents: Boolean
+    val includedEventTypes: Set<EventType> =
+        configLoader
+            .getString("included.event.types", "")
+            .orEmpty()
+            .takeIf { it.isNotBlank() }
+            ?.split(",")
+            ?.mapNotNull { typeName ->
+                try {
+                    EventType.valueOf(typeName.trim().uppercase())
+                } catch (_: IllegalArgumentException) {
+                    null
+                }
+            }?.toSet()
+            ?: EventType.values().toSet()
 
-    init {
-        val realmModel = session.context.realm
-        val attributes = realmModel?.attributes ?: emptyMap()
-
-        // Azure 기본 설정
-        connectionString =
-            attributes["azure.servicebus.connection.string"]
-                ?: System.getProperty("azure.servicebus.connection.string", "")
-
-        useManagedIdentity =
-            (
-                attributes["azure.use.managed.identity"]
-                    ?: System.getProperty("azure.use.managed.identity", "false")
-            ).toBoolean()
-
-        fullyQualifiedNamespace =
-            attributes["azure.servicebus.namespace"]
-                ?: System.getProperty("azure.servicebus.namespace", "")
-
-        managedIdentityClientId =
-            attributes["azure.managed.identity.client.id"]
-                ?: System.getProperty("azure.managed.identity.client.id")
-
-        // Queue 설정
-        useQueue =
-            (
-                attributes["azure.use.queue"]
-                    ?: System.getProperty("azure.use.queue", "true")
-            ).toBoolean()
-
-        userEventsQueueName =
-            attributes["azure.queue.user.events"]
-                ?: System.getProperty("azure.queue.user.events", "keycloak-user-events")
-
-        adminEventsQueueName =
-            attributes["azure.queue.admin.events"]
-                ?: System.getProperty("azure.queue.admin.events", "keycloak-admin-events")
-
-        // Topic 설정
-        useTopic =
-            (
-                attributes["azure.use.topic"]
-                    ?: System.getProperty("azure.use.topic", "false")
-            ).toBoolean()
-
-        userEventsTopicName =
-            attributes["azure.topic.user.events"]
-                ?: System.getProperty("azure.topic.user.events", "keycloak-user-events")
-
-        adminEventsTopicName =
-            attributes["azure.topic.admin.events"]
-                ?: System.getProperty("azure.topic.admin.events", "keycloak-admin-events")
-
-        // 이벤트 필터링
-        val includedTypesStr =
-            attributes["azure.included.event.types"]
-                ?: System.getProperty("azure.included.event.types", "")
-
-        includedEventTypes =
-            if (includedTypesStr.isBlank()) {
-                EventType.values().toSet()
-            } else {
-                includedTypesStr
-                    .split(",")
-                    .mapNotNull { typeName ->
-                        try {
-                            EventType.valueOf(typeName.trim().uppercase())
-                        } catch (e: IllegalArgumentException) {
-                            null
-                        }
-                    }.toSet()
-            }
-
-        enableAdminEvents =
-            attributes["azure.enable.admin.events"]?.toBoolean()
-                ?: System.getProperty("azure.enable.admin.events", "true").toBoolean()
-
-        enableUserEvents =
-            attributes["azure.enable.user.events"]?.toBoolean()
-                ?: System.getProperty("azure.enable.user.events", "true").toBoolean()
-    }
+    val enableAdminEvents: Boolean = configLoader.getBoolean("enable.admin.events", true)
+    val enableUserEvents: Boolean = configLoader.getBoolean("enable.user.events", true)
 }

@@ -24,6 +24,7 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(AzureEventListenerProviderFactory::class.java)
     private val serviceBusSenders = ConcurrentHashMap<String, AzureServiceBusSender>()
 
+    private var initConfigScope: Config.Scope? = null
     private var metricsExporter: PrometheusMetricsExporter? = null
     private lateinit var metrics: AzureEventMetrics
     private lateinit var circuitBreaker: CircuitBreaker
@@ -33,7 +34,7 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun create(session: KeycloakSession): EventListenerProvider =
         try {
-            val config = AzureEventListenerConfig(session)
+            val config = AzureEventListenerConfig(session, initConfigScope)
             val senderKey = buildSenderKey(config)
             val sender = getOrCreateSender(senderKey, config)
             AzureEventListenerProvider(
@@ -64,6 +65,7 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun init(config: Config.Scope) {
         logger.info("Initializing AzureEventListenerProviderFactory")
+        initConfigScope = config
 
         // Initialize Prometheus metrics exporter
         val enablePrometheus = config.getBoolean("enablePrometheus", false)

@@ -24,6 +24,7 @@ class RedisEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(RedisEventListenerProviderFactory::class.java)
     private val streamProducers = ConcurrentHashMap<String, RedisStreamProducer>()
 
+    private var initConfigScope: Config.Scope? = null
     private var metricsExporter: PrometheusMetricsExporter? = null
     private lateinit var metrics: RedisEventMetrics
     private lateinit var circuitBreaker: CircuitBreaker
@@ -33,7 +34,7 @@ class RedisEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun create(session: KeycloakSession): EventListenerProvider =
         try {
-            val config = RedisEventListenerConfig(session)
+            val config = RedisEventListenerConfig(session, initConfigScope)
             val streamProducer = getOrCreateStreamProducer(config)
             RedisEventListenerProvider(
                 session,
@@ -60,6 +61,7 @@ class RedisEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun init(config: Config.Scope) {
         logger.info("Initializing RedisEventListenerProviderFactory")
+        initConfigScope = config
 
         val redisUri = config.get("redisUri")
         val userEventsStream = config.get("userEventsStream")

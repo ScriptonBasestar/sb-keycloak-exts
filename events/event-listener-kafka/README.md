@@ -95,6 +95,8 @@ Realm의 **Attributes** 탭에서 다음 설정을 추가:
 | `kafka.enable.admin.events` | 관리 이벤트 활성화 | `true` | `true/false` |
 | `kafka.included.event.types` | 포함할 이벤트 타입 | 모든 타입 | `LOGIN,LOGOUT,REGISTER` |
 
+> ℹ️ 모든 `kafka.*` 설정은 Realm Attribute → SPI Config Scope(`standalone.xml`, `keycloak.conf`) → JVM System Property 순으로 조회됩니다. 환경에 따라 같은 키를 원하는 레벨에서 덮어써 주세요.
+
 ### Resilience Patterns 설정
 
 #### Circuit Breaker (장애 전파 방지)

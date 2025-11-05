@@ -25,7 +25,7 @@ Keycloak에서 발생하는 사용자/관리자 이벤트를 다양한 메시징
 
 ### 공통 모듈의 역할 (`event-listener-common`)
 - **모델 & 직렬화**: `KeycloakEvent`, `KeycloakAdminEvent`, `EventMeta` 등 일관된 JSON 스키마를 제공
-- **ConfigLoader**: Realm Attributes → SPI Config.Scope → System Property 순의 계층형 설정 조회를 구현해, 동일 코드로 멀티 환경을 지원
+- **ConfigLoader**: Realm Attributes → SPI Config.Scope → System Property 순의 계층형 설정 조회를 구현해, 동일 코드로 멀티 환경을 지원하며 모든 이벤트 모듈이 `prefix.key` 형태(`kafka.bootstrap.servers`, `azure.use.queue` 등)의 동일 키 네이밍을 따릅니다.
 - **Resilience 컴포넌트**: CircuitBreaker, RetryPolicy, DeadLetterQueue, BatchProcessor를 개별 모듈에서 재사용
 - **Metrics 인터페이스**: 각각의 어댑터가 `EventMetrics`를 구현하여 Prometheus 지표와 Grafana 대시보드에 반영
 - **테스트 자산**: 공통 모듈의 단위 테스트로 각 패턴의 신뢰성을 검증
