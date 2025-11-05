@@ -198,8 +198,8 @@ standalone.xml에서 전역 설정:
 <spi name="eventsListener">
     <provider name="kafka-event-listener">
         <properties>
-            <property name="bootstrapServers" value="localhost:9092"/>
-            <property name="eventTopic" value="keycloak-events"/>
+            <property name="kafka.bootstrap.servers" value="localhost:9092"/>
+            <property name="kafka.event.topic" value="keycloak-events"/>
         </properties>
     </provider>
 </spi>

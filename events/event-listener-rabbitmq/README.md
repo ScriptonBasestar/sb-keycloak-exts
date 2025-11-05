@@ -24,7 +24,7 @@ RabbitMQ 기반의 Keycloak 이벤트 리스너 구현체입니다. Keycloak에�
 - **Connection Manager 추상화**: `RabbitMQConnectionManager`에서 ConnectionFactory, 자동 복구, Publisher Confirm 설정을 일괄 처리해 Provider는 이벤트 로직에 집중합니다.
 - **메시지 캡슐화**: `RabbitMQEventMessage`에 라우팅 키, Exchange, `EventMeta`를 함께 담아 DLQ 및 관찰성 도구가 문제 원인과 대상을 쉽게 추적할 수 있습니다.
 - **공통 회복력 재사용**: CircuitBreaker, RetryPolicy, DeadLetterQueue, BatchProcessor를 `event-listener-common`에서 가져와 다른 메시징 모듈과 동일한 장애 대응 흐름을 유지합니다.
-- **라우팅 키 전략**: `userEventRoutingKey.realm.eventType`, `adminEventRoutingKey.realm.operation` 구조로 메시지를 구성해 토폴로지 확장이나 권한 분리를 단순화했습니다.
+- **라우팅 키 전략**: `routing.user.realm.eventType`, `routing.admin.realm.operation` 구조로 메시지를 구성해 토폴로지 확장이나 권한 분리를 단순화했습니다.
 - **관찰성**: `RabbitMQEventMetrics`가 전송 성공/실패, 지연 시간을 Prometheus에 노출하고 `events/grafana-dashboard.json` 대시보드와 연동됩니다.
 
 ## 아키텍처
@@ -96,32 +96,34 @@ spi-events-listener-rabbitmq-event-listener-host=localhost
 spi-events-listener-rabbitmq-event-listener-port=5672
 spi-events-listener-rabbitmq-event-listener-username=guest
 spi-events-listener-rabbitmq-event-listener-password=guest
-spi-events-listener-rabbitmq-event-listener-virtualHost=/
+spi-events-listener-rabbitmq-event-listener-virtual.host=/
 
 # Exchange Configuration
-spi-events-listener-rabbitmq-event-listener-exchangeName=keycloak-events
-spi-events-listener-rabbitmq-event-listener-exchangeType=topic
-spi-events-listener-rabbitmq-event-listener-exchangeDurable=true
+spi-events-listener-rabbitmq-event-listener-exchange.name=keycloak-events
+spi-events-listener-rabbitmq-event-listener-exchange.type=topic
+spi-events-listener-rabbitmq-event-listener-exchange.durable=true
 
 # Routing Keys
-spi-events-listener-rabbitmq-event-listener-userEventRoutingKey=keycloak.events.user
-spi-events-listener-rabbitmq-event-listener-adminEventRoutingKey=keycloak.events.admin
+spi-events-listener-rabbitmq-event-listener-routing.user=keycloak.events.user
+spi-events-listener-rabbitmq-event-listener-routing.admin=keycloak.events.admin
 
 # Event Filtering
-spi-events-listener-rabbitmq-event-listener-enableUserEvents=true
-spi-events-listener-rabbitmq-event-listener-enableAdminEvents=true
-spi-events-listener-rabbitmq-event-listener-includedEventTypes=LOGIN,LOGOUT,REGISTER
+spi-events-listener-rabbitmq-event-listener-enable.user.events=true
+spi-events-listener-rabbitmq-event-listener-enable.admin.events=true
+spi-events-listener-rabbitmq-event-listener-included.event.types=LOGIN,LOGOUT,REGISTER
 
 # Connection Settings
-spi-events-listener-rabbitmq-event-listener-connectionTimeout=60000
-spi-events-listener-rabbitmq-event-listener-requestedHeartbeat=60
-spi-events-listener-rabbitmq-event-listener-networkRecoveryInterval=5000
-spi-events-listener-rabbitmq-event-listener-automaticRecoveryEnabled=true
+spi-events-listener-rabbitmq-event-listener-connection.timeout.ms=60000
+spi-events-listener-rabbitmq-event-listener-requested.heartbeat=60
+spi-events-listener-rabbitmq-event-listener-network.recovery.interval.ms=5000
+spi-events-listener-rabbitmq-event-listener-automatic.recovery.enabled=true
 
 # Publisher Confirms (Optional)
-spi-events-listener-rabbitmq-event-listener-publisherConfirms=false
-spi-events-listener-rabbitmq-event-listener-publisherConfirmTimeout=5000
+spi-events-listener-rabbitmq-event-listener-publisher.confirms=false
+spi-events-listener-rabbitmq-event-listener-publisher.confirm.timeout.ms=5000
 ```
+
+> ℹ️ Realm Attribute 및 JVM 시스템 프로퍼티에서도 동일한 `rabbitmq.*` 접두사를 사용합니다 (예: `rabbitmq.exchange.name`, `rabbitmq.routing.user`).
 
 ### 환경 변수 설정
 
@@ -145,13 +147,13 @@ Keycloak Admin Console에서:
 
 ### 사용자 이벤트
 ```
-{userEventRoutingKey}.{realmId}.{eventType}
+{routing.user}.{realmId}.{eventType}
 예: keycloak.events.user.master.LOGIN
 ```
 
 ### 관리자 이벤트
 ```
-{adminEventRoutingKey}.{realmId}.{operationType}
+{routing.admin}.{realmId}.{operationType}
 예: keycloak.events.admin.master.CREATE
 ```
 

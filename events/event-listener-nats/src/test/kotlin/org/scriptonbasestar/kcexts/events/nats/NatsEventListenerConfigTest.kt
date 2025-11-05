@@ -12,7 +12,7 @@ class NatsEventListenerConfigTest {
         val config =
             NatsEventListenerConfig.fromConfig(
                 mapOf(
-                    "serverUrl" to null,
+                    "nats.server.url" to null,
                 ),
             )
 
@@ -29,21 +29,21 @@ class NatsEventListenerConfigTest {
         val config =
             NatsEventListenerConfig.fromConfig(
                 mapOf(
-                    "serverUrl" to "nats://prod-server:4222",
+                    "nats.server.url" to "nats://prod-server:4222",
                     "username" to "testuser",
                     "password" to "testpass",
                     "token" to "testtoken",
-                    "useTls" to "true",
-                    "userEventSubject" to "prod.events.user",
-                    "adminEventSubject" to "prod.events.admin",
-                    "enableUserEvents" to "false",
-                    "enableAdminEvents" to "false",
-                    "includedEventTypes" to "LOGIN,LOGOUT,REGISTER",
-                    "connectionTimeout" to "30000",
-                    "maxReconnects" to "10",
-                    "reconnectWait" to "1000",
-                    "noEcho" to "true",
-                    "maxPingsOut" to "5",
+                    "nats.use.tls" to "true",
+                    "nats.subject.user" to "prod.events.user",
+                    "nats.subject.admin" to "prod.events.admin",
+                    "nats.enable.user.events" to "false",
+                    "nats.enable.admin.events" to "false",
+                    "nats.included.event.types" to "LOGIN,LOGOUT,REGISTER",
+                    "nats.connection.timeout.ms" to "30000",
+                    "nats.max.reconnects" to "10",
+                    "nats.reconnect.wait.ms" to "1000",
+                    "nats.no.echo" to "true",
+                    "nats.max.pings.out" to "5",
                 ),
             )
 
@@ -69,7 +69,7 @@ class NatsEventListenerConfigTest {
         val config =
             NatsEventListenerConfig.fromConfig(
                 mapOf(
-                    "includedEventTypes" to "",
+                    "nats.included.event.types" to "",
                 ),
             )
 
@@ -81,7 +81,7 @@ class NatsEventListenerConfigTest {
         val config =
             NatsEventListenerConfig.fromConfig(
                 mapOf(
-                    "includedEventTypes" to "  LOGIN  ,  LOGOUT  ,  REGISTER  ",
+                    "nats.included.event.types" to "  LOGIN  ,  LOGOUT  ,  REGISTER  ",
                 ),
             )
 
@@ -93,7 +93,7 @@ class NatsEventListenerConfigTest {
         val config =
             NatsEventListenerConfig.fromConfig(
                 mapOf(
-                    "includedEventTypes" to "LOGIN,,LOGOUT,,,REGISTER",
+                    "nats.included.event.types" to "LOGIN,,LOGOUT,,,REGISTER",
                 ),
             )
 

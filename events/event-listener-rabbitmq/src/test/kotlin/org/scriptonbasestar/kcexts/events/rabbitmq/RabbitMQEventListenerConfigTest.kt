@@ -28,15 +28,15 @@ class RabbitMQEventListenerConfigTest {
     fun `should create config with custom values`() {
         val configMap =
             mapOf(
-                "host" to "rabbitmq.example.com",
-                "port" to "5673",
-                "username" to "keycloak",
-                "password" to "secret",
-                "virtualHost" to "/production",
-                "useSsl" to "true",
-                "exchangeName" to "custom-exchange",
-                "exchangeType" to "fanout",
-                "exchangeDurable" to "false",
+                "rabbitmq.host" to "rabbitmq.example.com",
+                "rabbitmq.port" to "5673",
+                "rabbitmq.username" to "keycloak",
+                "rabbitmq.password" to "secret",
+                "rabbitmq.virtual.host" to "/production",
+                "rabbitmq.use.ssl" to "true",
+                "rabbitmq.exchange.name" to "custom-exchange",
+                "rabbitmq.exchange.type" to "fanout",
+                "rabbitmq.exchange.durable" to "false",
             )
 
         val config = RabbitMQEventListenerConfig.fromConfig(configMap)
@@ -56,8 +56,8 @@ class RabbitMQEventListenerConfigTest {
     fun `should parse routing keys correctly`() {
         val configMap =
             mapOf(
-                "userEventRoutingKey" to "app.user.events",
-                "adminEventRoutingKey" to "app.admin.events",
+                "rabbitmq.routing.user" to "app.user.events",
+                "rabbitmq.routing.admin" to "app.admin.events",
             )
 
         val config = RabbitMQEventListenerConfig.fromConfig(configMap)
@@ -70,9 +70,9 @@ class RabbitMQEventListenerConfigTest {
     fun `should parse event filtering settings`() {
         val configMap =
             mapOf(
-                "enableUserEvents" to "false",
-                "enableAdminEvents" to "true",
-                "includedEventTypes" to "LOGIN,LOGOUT,REGISTER",
+                "rabbitmq.enable.user.events" to "false",
+                "rabbitmq.enable.admin.events" to "true",
+                "rabbitmq.included.event.types" to "LOGIN,LOGOUT,REGISTER",
             )
 
         val config = RabbitMQEventListenerConfig.fromConfig(configMap)
@@ -86,10 +86,10 @@ class RabbitMQEventListenerConfigTest {
     fun `should parse connection settings`() {
         val configMap =
             mapOf(
-                "connectionTimeout" to "30000",
-                "requestedHeartbeat" to "30",
-                "networkRecoveryInterval" to "10000",
-                "automaticRecoveryEnabled" to "false",
+                "rabbitmq.connection.timeout.ms" to "30000",
+                "rabbitmq.requested.heartbeat" to "30",
+                "rabbitmq.network.recovery.interval.ms" to "10000",
+                "rabbitmq.automatic.recovery.enabled" to "false",
             )
 
         val config = RabbitMQEventListenerConfig.fromConfig(configMap)
@@ -104,8 +104,8 @@ class RabbitMQEventListenerConfigTest {
     fun `should parse publisher confirms settings`() {
         val configMap =
             mapOf(
-                "publisherConfirms" to "true",
-                "publisherConfirmTimeout" to "10000",
+                "rabbitmq.publisher.confirms" to "true",
+                "rabbitmq.publisher.confirm.timeout.ms" to "10000",
             )
 
         val config = RabbitMQEventListenerConfig.fromConfig(configMap)
@@ -116,7 +116,7 @@ class RabbitMQEventListenerConfigTest {
 
     @Test
     fun `should handle invalid port gracefully`() {
-        val configMap = mapOf("port" to "invalid")
+        val configMap = mapOf("rabbitmq.port" to "invalid")
 
         val config = RabbitMQEventListenerConfig.fromConfig(configMap)
 
@@ -125,7 +125,7 @@ class RabbitMQEventListenerConfigTest {
 
     @Test
     fun `should handle empty included event types`() {
-        val configMap = mapOf("includedEventTypes" to "")
+        val configMap = mapOf("rabbitmq.included.event.types" to "")
 
         val config = RabbitMQEventListenerConfig.fromConfig(configMap)
 
@@ -134,7 +134,7 @@ class RabbitMQEventListenerConfigTest {
 
     @Test
     fun `should trim whitespace in event types`() {
-        val configMap = mapOf("includedEventTypes" to " LOGIN , LOGOUT , REGISTER ")
+        val configMap = mapOf("rabbitmq.included.event.types" to " LOGIN , LOGOUT , REGISTER ")
 
         val config = RabbitMQEventListenerConfig.fromConfig(configMap)
 

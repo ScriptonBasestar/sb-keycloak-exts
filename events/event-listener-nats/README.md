@@ -14,7 +14,7 @@ Keycloak 이벤트를 NATS subject 기반 메시징으로 전달하는 모듈입
 | 초경량, 낮은 지연 | 단일 바이너리, in-memory 라우팅 | 최소한의 직렬화와 즉시 publish 방식 |
 | 동적 subject 라우팅 | 와일드카드 subject (`foo.*.bar`) | Realm/이벤트 타입별 subject 자동 생성 |
 | 단순 운영 | JetStream 없이도 사용 가능 | 외부 브로커 의존성 낮추기, 연결 실패 시 빠른 재시도 |
-| 유연한 인증 | 토큰, Basic Auth, TLS | `serverUrl`, `token`, `username/password`, `useTls` 옵션 제공 |
+| 유연한 인증 | 토큰, Basic Auth, TLS | `nats.server.url`, `nats.token`, `nats.username/password`, `nats.use.tls` 옵션 제공 |
 
 ## Design Rationale
 ### Shared abstractions
@@ -25,7 +25,7 @@ Keycloak 이벤트를 NATS subject 기반 메시징으로 전달하는 모듈입
 ### NATS-specific decisions
 - **Connection Manager**: 서버 URL 별로 하나의 `NatsConnectionManager`를 유지하여 재연결 시 오버헤드를 줄이고, NATS의 빠른 핸드셰이크 특성을 살립니다.
 - **noEcho 강제 적용**: Keycloak이 publish한 이벤트가 다시 자기 자신에게 전달되는 것을 방지하기 위해 NATS 클라이언트는 항상 `noEcho()` 모드로 연결됩니다.
-- **Subject 설계**: `userEventSubject` / `adminEventSubject`를 기반으로 realm과 이벤트 타입을 suffix로 붙여 운영 중인 모든 Realm을 단일 구독으로 모니터링할 수 있습니다.
+- **Subject 설계**: `nats.subject.user` / `nats.subject.admin` 값을 기반으로 realm과 이벤트 타입을 suffix로 붙여 운영 중인 모든 Realm을 단일 구독으로 모니터링할 수 있습니다.
 - **배치 처리 옵션**: NATS는 단일 메시지 전송에 최적화되어 있지만, 대량 이벤트 처리 시 네트워크 효율을 위해 `BatchProcessor`를 선택적으로 활성화할 수 있도록 했습니다.
 
 ## Event Flow
@@ -55,7 +55,7 @@ Keycloak 이벤트를 NATS subject 기반 메시징으로 전달하는 모듈입
 
 ## Message Model & Subject Template
 ### User events
-- Subject pattern: `{userEventSubject}.{realmId}.{eventType}`
+- Subject pattern: `{nats.subject.user}.{realmId}.{eventType}`
 - Payload example:
 ```json
 {
@@ -74,7 +74,7 @@ Keycloak 이벤트를 NATS subject 기반 메시징으로 전달하는 모듈입
 ```
 
 ### Admin events
-- Subject pattern: `{adminEventSubject}.{realmId}.{operationType}`
+- Subject pattern: `{nats.subject.admin}.{realmId}.{operationType}`
 - Payload example:
 ```json
 {
@@ -99,9 +99,9 @@ Keycloak 이벤트를 NATS subject 기반 메시징으로 전달하는 모듈입
 <spi name="eventsListener">
   <provider name="nats-event-listener" enabled="true">
     <properties>
-      <property name="serverUrl" value="nats://localhost:4222"/>
-      <property name="userEventSubject" value="keycloak.events.user"/>
-      <property name="adminEventSubject" value="keycloak.events.admin"/>
+      <property name="nats.server.url" value="nats://localhost:4222"/>
+      <property name="nats.subject.user" value="keycloak.events.user"/>
+      <property name="nats.subject.admin" value="keycloak.events.admin"/>
     </properties>
   </provider>
 </spi>
@@ -110,28 +110,28 @@ Keycloak 이벤트를 NATS subject 기반 메시징으로 전달하는 모듈입
 ### Core connection
 | Property | Default | Notes |
 |----------|---------|-------|
-| `serverUrl` | `nats://localhost:4222` | 단일 서버 혹은 `nats://host1:4222,nats://host2:4222` 형태 |
-| `connectionTimeout` | `60000` | ms 기준 연결 타임아웃 |
-| `maxReconnects` | `60` | 재연결 시도 횟수, `-1`이면 무한 |
-| `reconnectWait` | `2000` | 재연결 사이 지연(ms) |
-| `maxPingsOut` | `2` | heartbeat 실패 허용 횟수 |
-| `useTls` | `false` | TLS 필요 시 `true` |
-| `noEcho` | `true` (강제) | 서버 echo 방지. 옵션 값과 무관하게 항상 활성화됩니다. |
+| `nats.server.url` | `nats://localhost:4222` | 단일 서버 혹은 `nats://host1:4222,nats://host2:4222` 형태 |
+| `nats.connection.timeout.ms` | `60000` | ms 기준 연결 타임아웃 |
+| `nats.max.reconnects` | `60` | 재연결 시도 횟수, `-1`이면 무한 |
+| `nats.reconnect.wait.ms` | `2000` | 재연결 사이 지연(ms) |
+| `nats.max.pings.out` | `2` | heartbeat 실패 허용 횟수 |
+| `nats.use.tls` | `false` | TLS 필요 시 `true` |
+| `nats.no.echo` | `true` (강제) | 클라이언트에서 항상 활성화되므로 설정값과 무관하게 적용됩니다. |
 
 ### Authentication
 | Property | Description |
 |----------|-------------|
-| `token` | NATS 토큰 기반 인증 |
-| `username` / `password` | Basic 인증 (둘 다 지정 시 적용) |
+| `nats.token` | NATS 토큰 기반 인증 |
+| `nats.username` / `nats.password` | Basic 인증 (둘 다 지정 시 적용) |
 
 ### Subjects & Filtering
 | Property | Default | Description |
 |----------|---------|-------------|
-| `userEventSubject` | `keycloak.events.user` | Realm/이벤트 suffix가 뒤따릅니다. |
-| `adminEventSubject` | `keycloak.events.admin` | Realm/operation suffix가 뒤따릅니다. |
-| `enableUserEvents` | `true` | 사용자 이벤트 전송 토글 |
-| `enableAdminEvents` | `true` | 관리자 이벤트 전송 토글 |
-| `includedEventTypes` | (all) | `LOGIN,LOGOUT` 형태의 화이트리스트 |
+| `nats.subject.user` | `keycloak.events.user` | Realm/이벤트 suffix가 뒤따릅니다. |
+| `nats.subject.admin` | `keycloak.events.admin` | Realm/operation suffix가 뒤따릅니다. |
+| `nats.enable.user.events` | `true` | 사용자 이벤트 전송 토글 |
+| `nats.enable.admin.events` | `true` | 관리자 이벤트 전송 토글 |
+| `nats.included.event.types` | (all) | `LOGIN,LOGOUT` 형태의 화이트리스트 |
 
 ### Resilience & Delivery Safety
 | Property | Default | Purpose |

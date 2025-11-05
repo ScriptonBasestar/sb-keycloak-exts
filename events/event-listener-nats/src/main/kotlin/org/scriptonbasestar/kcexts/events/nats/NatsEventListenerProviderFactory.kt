@@ -21,18 +21,19 @@ class NatsEventListenerProviderFactory : EventListenerProviderFactory {
 
     private var metricsExporter: PrometheusMetricsExporter? = null
     private lateinit var metrics: NatsEventMetrics
-    private lateinit var defaultConfig: NatsEventListenerConfig
     private lateinit var circuitBreaker: CircuitBreaker
     private lateinit var retryPolicy: RetryPolicy
     private lateinit var deadLetterQueue: DeadLetterQueue
     private lateinit var batchProcessor: BatchProcessor<NatsEventMessage>
+    private var initConfigScope: Config.Scope? = null
 
     override fun create(session: KeycloakSession): EventListenerProvider =
         try {
-            val connectionManager = getOrCreateConnectionManager(defaultConfig)
+            val runtimeConfig = NatsEventListenerConfig.fromRuntime(session, initConfigScope)
+            val connectionManager = getOrCreateConnectionManager(runtimeConfig)
             NatsEventListenerProvider(
                 session,
-                defaultConfig,
+                runtimeConfig,
                 connectionManager,
                 metrics,
                 circuitBreaker,
@@ -46,7 +47,13 @@ class NatsEventListenerProviderFactory : EventListenerProviderFactory {
         }
 
     private fun getOrCreateConnectionManager(config: NatsEventListenerConfig): NatsConnectionManager {
-        val key = config.serverUrl
+        val key =
+            listOfNotNull(
+                config.serverUrl,
+                config.username,
+                config.token,
+                config.useTls.toString(),
+            ).joinToString("|")
         return connectionManagers.computeIfAbsent(key) {
             logger.info("Creating new NatsConnectionManager for server: $key")
             NatsConnectionManager(config)
@@ -55,33 +62,13 @@ class NatsEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun init(config: Config.Scope) {
         logger.info("Initializing NatsEventListenerProviderFactory")
+        initConfigScope = config
 
-        // Load configuration
-        val configMap =
-            mapOf(
-                "serverUrl" to config.get("serverUrl"),
-                "username" to config.get("username"),
-                "password" to config.get("password"),
-                "token" to config.get("token"),
-                "useTls" to config.get("useTls"),
-                "userEventSubject" to config.get("userEventSubject"),
-                "adminEventSubject" to config.get("adminEventSubject"),
-                "enableUserEvents" to config.get("enableUserEvents"),
-                "enableAdminEvents" to config.get("enableAdminEvents"),
-                "includedEventTypes" to config.get("includedEventTypes"),
-                "connectionTimeout" to config.get("connectionTimeout"),
-                "maxReconnects" to config.get("maxReconnects"),
-                "reconnectWait" to config.get("reconnectWait"),
-                "noEcho" to config.get("noEcho"),
-                "maxPingsOut" to config.get("maxPingsOut"),
-            )
-
-        defaultConfig = NatsEventListenerConfig.fromConfig(configMap)
-
+        val initSnapshot = NatsEventListenerConfig.fromInit(config)
         logger.info(
-            "Configuration loaded - server: ${defaultConfig.serverUrl}, " +
-                "userSubject: ${defaultConfig.userEventSubject}, " +
-                "adminSubject: ${defaultConfig.adminEventSubject}",
+            "Configuration loaded - server: ${initSnapshot.serverUrl}, " +
+                "userSubject: ${initSnapshot.userEventSubject}, " +
+                "adminSubject: ${initSnapshot.adminEventSubject}",
         )
 
         // Initialize Prometheus metrics exporter if enabled

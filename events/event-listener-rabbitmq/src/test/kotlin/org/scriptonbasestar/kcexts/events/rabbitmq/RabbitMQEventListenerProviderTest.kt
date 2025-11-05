@@ -1,5 +1,6 @@
 package org.scriptonbasestar.kcexts.events.rabbitmq
 
+import java.time.Duration
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -17,6 +18,10 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.scriptonbasestar.kcexts.events.common.batch.BatchProcessor
+import org.scriptonbasestar.kcexts.events.common.dlq.DeadLetterQueue
+import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreaker
+import org.scriptonbasestar.kcexts.events.common.resilience.RetryPolicy
 import org.scriptonbasestar.kcexts.events.rabbitmq.metrics.RabbitMQEventMetrics
 
 class RabbitMQEventListenerProviderTest {
@@ -24,7 +29,23 @@ class RabbitMQEventListenerProviderTest {
     private lateinit var config: RabbitMQEventListenerConfig
     private lateinit var connectionManager: RabbitMQConnectionManager
     private lateinit var metrics: RabbitMQEventMetrics
+    private lateinit var circuitBreaker: CircuitBreaker
+    private lateinit var retryPolicy: RetryPolicy
+    private lateinit var deadLetterQueue: DeadLetterQueue
+    private lateinit var batchProcessor: BatchProcessor<RabbitMQEventMessage>
     private lateinit var provider: RabbitMQEventListenerProvider
+
+    private fun createProvider(configOverride: RabbitMQEventListenerConfig): RabbitMQEventListenerProvider =
+        RabbitMQEventListenerProvider(
+            session,
+            configOverride,
+            connectionManager,
+            metrics,
+            circuitBreaker,
+            retryPolicy,
+            deadLetterQueue,
+            batchProcessor,
+        )
 
     @BeforeEach
     fun setup() {
@@ -42,7 +63,34 @@ class RabbitMQEventListenerProviderTest {
             )
         connectionManager = mock()
         metrics = RabbitMQEventMetrics()
-        provider = RabbitMQEventListenerProvider(session, config, connectionManager, metrics)
+        circuitBreaker =
+            CircuitBreaker(
+                name = "rabbitmq-test",
+                failureThreshold = 5,
+                successThreshold = 1,
+                openTimeout = Duration.ofSeconds(30),
+            )
+        retryPolicy =
+            RetryPolicy(
+                maxAttempts = 1,
+                initialDelay = Duration.ZERO,
+                maxDelay = Duration.ofMillis(10),
+                backoffStrategy = RetryPolicy.BackoffStrategy.FIXED,
+            )
+        deadLetterQueue =
+            DeadLetterQueue(
+                maxSize = 10,
+                persistToFile = false,
+                persistencePath = "./build/tmp/rabbitmq-test-dlq",
+            )
+        batchProcessor =
+            BatchProcessor(
+                batchSize = 10,
+                flushInterval = Duration.ofSeconds(5),
+                processBatch = { /* no-op for unit tests */ },
+                onError = { _, _ -> },
+            )
+        provider = createProvider(config)
     }
 
     @Test
@@ -51,7 +99,7 @@ class RabbitMQEventListenerProviderTest {
         doNothing().whenever(connectionManager).publishMessage(any(), any())
 
         assertDoesNotThrow {
-            provider.onEvent(event)
+            createProvider(config).onEvent(event)
         }
 
         verify(connectionManager, times(1)).publishMessage(any(), any())
@@ -60,7 +108,7 @@ class RabbitMQEventListenerProviderTest {
     @Test
     fun `should skip user event when disabled`() {
         val disabledConfig = config.copy(enableUserEvents = false)
-        val provider = RabbitMQEventListenerProvider(session, disabledConfig, connectionManager, metrics)
+        val provider = createProvider(disabledConfig)
         val event = createMockUserEvent()
 
         provider.onEvent(event)
@@ -71,7 +119,7 @@ class RabbitMQEventListenerProviderTest {
     @Test
     fun `should filter user events by type`() {
         val filteredConfig = config.copy(includedEventTypes = setOf("REGISTER"))
-        val provider = RabbitMQEventListenerProvider(session, filteredConfig, connectionManager, metrics)
+        val provider = createProvider(filteredConfig)
         val loginEvent = createMockUserEvent(EventType.LOGIN)
 
         provider.onEvent(loginEvent)
@@ -82,7 +130,7 @@ class RabbitMQEventListenerProviderTest {
     @Test
     fun `should allow included event types`() {
         val filteredConfig = config.copy(includedEventTypes = setOf("LOGIN"))
-        val provider = RabbitMQEventListenerProvider(session, filteredConfig, connectionManager, metrics)
+        val provider = createProvider(filteredConfig)
         val loginEvent = createMockUserEvent(EventType.LOGIN)
         doNothing().whenever(connectionManager).publishMessage(any(), any())
 
@@ -120,7 +168,7 @@ class RabbitMQEventListenerProviderTest {
     @Test
     fun `should skip admin event when disabled`() {
         val disabledConfig = config.copy(enableAdminEvents = false)
-        val provider = RabbitMQEventListenerProvider(session, disabledConfig, connectionManager, metrics)
+        val provider = createProvider(disabledConfig)
         val adminEvent = createMockAdminEvent()
 
         provider.onEvent(adminEvent, false)
@@ -135,7 +183,7 @@ class RabbitMQEventListenerProviderTest {
             .whenever(connectionManager).publishMessage(any(), any())
 
         assertDoesNotThrow {
-            provider.onEvent(adminEvent, false)
+            createProvider(config).onEvent(adminEvent, false)
         }
 
         val summary = metrics.getMetricsSummary()
@@ -195,7 +243,6 @@ class RabbitMQEventListenerProviderTest {
         }
 
         provider.onEvent(adminEvent, true)
-
         assert(capturedMessage.contains("representation"))
     }
 
@@ -211,8 +258,8 @@ class RabbitMQEventListenerProviderTest {
 
         provider.onEvent(adminEvent, false)
 
-        // Should still process, but representation should be null
-        assert(capturedMessage.isNotEmpty())
+        // Should still process, but representation should be stripped
+        assert(!capturedMessage.contains("representation"))
     }
 
     private fun createMockUserEvent(type: EventType = EventType.LOGIN): Event {

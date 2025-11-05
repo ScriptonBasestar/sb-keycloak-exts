@@ -21,18 +21,19 @@ class RabbitMQEventListenerProviderFactory : EventListenerProviderFactory {
 
     private var metricsExporter: PrometheusMetricsExporter? = null
     private lateinit var metrics: RabbitMQEventMetrics
-    private lateinit var defaultConfig: RabbitMQEventListenerConfig
     private lateinit var circuitBreaker: CircuitBreaker
     private lateinit var retryPolicy: RetryPolicy
     private lateinit var deadLetterQueue: DeadLetterQueue
     private lateinit var batchProcessor: BatchProcessor<RabbitMQEventMessage>
+    private var initConfigScope: Config.Scope? = null
 
     override fun create(session: KeycloakSession): EventListenerProvider =
         try {
-            val connectionManager = getOrCreateConnectionManager(defaultConfig)
+            val runtimeConfig = RabbitMQEventListenerConfig.fromRuntime(session, initConfigScope)
+            val connectionManager = getOrCreateConnectionManager(runtimeConfig)
             RabbitMQEventListenerProvider(
                 session,
-                defaultConfig,
+                runtimeConfig,
                 connectionManager,
                 metrics,
                 circuitBreaker,
@@ -55,41 +56,14 @@ class RabbitMQEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun init(config: Config.Scope) {
         logger.info("Initializing RabbitMQEventListenerProviderFactory")
+        initConfigScope = config
 
-        // Load configuration
-        val configMap =
-            mapOf(
-                "host" to config.get("host"),
-                "port" to config.get("port"),
-                "username" to config.get("username"),
-                "password" to config.get("password"),
-                "virtualHost" to config.get("virtualHost"),
-                "useSsl" to config.get("useSsl"),
-                "exchangeName" to config.get("exchangeName"),
-                "exchangeType" to config.get("exchangeType"),
-                "exchangeDurable" to config.get("exchangeDurable"),
-                "queueDurable" to config.get("queueDurable"),
-                "queueAutoDelete" to config.get("queueAutoDelete"),
-                "userEventRoutingKey" to config.get("userEventRoutingKey"),
-                "adminEventRoutingKey" to config.get("adminEventRoutingKey"),
-                "enableUserEvents" to config.get("enableUserEvents"),
-                "enableAdminEvents" to config.get("enableAdminEvents"),
-                "includedEventTypes" to config.get("includedEventTypes"),
-                "connectionTimeout" to config.get("connectionTimeout"),
-                "requestedHeartbeat" to config.get("requestedHeartbeat"),
-                "networkRecoveryInterval" to config.get("networkRecoveryInterval"),
-                "automaticRecoveryEnabled" to config.get("automaticRecoveryEnabled"),
-                "publisherConfirms" to config.get("publisherConfirms"),
-                "publisherConfirmTimeout" to config.get("publisherConfirmTimeout"),
-            )
-
-        defaultConfig = RabbitMQEventListenerConfig.fromConfig(configMap)
-
+        val initSnapshot = RabbitMQEventListenerConfig.fromInit(config)
         logger.info(
-            "Configuration loaded - host: ${defaultConfig.host}, " +
-                "port: ${defaultConfig.port}, " +
-                "exchange: ${defaultConfig.exchangeName}, " +
-                "virtualHost: ${defaultConfig.virtualHost}",
+            "Configuration loaded - host: ${initSnapshot.host}, " +
+                "port: ${initSnapshot.port}, " +
+                "exchange: ${initSnapshot.exchangeName}, " +
+                "virtualHost: ${initSnapshot.virtualHost}",
         )
 
         // Initialize Prometheus metrics exporter if enabled

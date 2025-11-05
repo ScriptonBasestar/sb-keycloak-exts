@@ -72,8 +72,6 @@ class AwsEventListenerProvider(
                 realm = event.realmId ?: "unknown",
             )
 
-            val destination = if (config.useSqs) config.sqsUserEventsQueueUrl else config.snsUserEventsTopicArn
-            metrics.recordEventSent(event.type.name, event.realmId ?: "unknown", destination, json.toByteArray().size)
             metrics.stopTimer(timerSample, event.type.name)
         } catch (e: CircuitBreakerOpenException) {
             logger.warn("Circuit breaker is open, event rejected: type=${event.type}")
@@ -125,8 +123,6 @@ class AwsEventListenerProvider(
                 realm = event.realmId ?: "unknown",
             )
 
-            val destination = if (config.useSqs) config.sqsAdminEventsQueueUrl else config.snsAdminEventsTopicArn
-            metrics.recordEventSent("ADMIN_${event.operationType.name}", event.realmId ?: "unknown", destination, json.toByteArray().size)
             metrics.stopTimer(timerSample, "ADMIN_${event.operationType.name}")
         } catch (e: CircuitBreakerOpenException) {
             logger.warn("Circuit breaker is open, admin event rejected")
@@ -146,56 +142,99 @@ class AwsEventListenerProvider(
         eventType: String,
         realm: String,
     ) {
-        val queueUrl = if (isAdminEvent) config.sqsAdminEventsQueueUrl else config.sqsUserEventsQueueUrl
-        val topicArn = if (isAdminEvent) config.snsAdminEventsTopicArn else config.snsUserEventsTopicArn
+        val payloadSize = messageBody.toByteArray().size
+        val destinationMessages =
+            buildList {
+                if (config.useSqs) {
+                    add(
+                        AwsEventMessage(
+                            messageBody = messageBody,
+                            queueUrl = if (isAdminEvent) config.sqsAdminEventsQueueUrl else config.sqsUserEventsQueueUrl,
+                            topicArn = null,
+                            messageAttributes = attributes,
+                            meta =
+                                EventMeta(
+                                    eventType = eventType,
+                                    realm = realm,
+                                ),
+                        ),
+                    )
+                }
+                if (config.useSns) {
+                    add(
+                        AwsEventMessage(
+                            messageBody = messageBody,
+                            queueUrl = null,
+                            topicArn = if (isAdminEvent) config.snsAdminEventsTopicArn else config.snsUserEventsTopicArn,
+                            messageAttributes = attributes,
+                            meta =
+                                EventMeta(
+                                    eventType = eventType,
+                                    realm = realm,
+                                ),
+                        ),
+                    )
+                }
+            }
 
-        val message =
-            AwsEventMessage(
-                messageBody = messageBody,
-                queueUrl = if (config.useSqs) queueUrl else null,
-                topicArn = if (config.useSns) topicArn else null,
-                messageAttributes = attributes,
-                meta =
-                    EventMeta(
-                        eventType = eventType,
-                        realm = realm,
-                    ),
-            )
-
-        if (batchProcessor.isRunning()) {
-            batchProcessor.add(message)
+        if (destinationMessages.isEmpty()) {
+            logger.warn("Skipping event $eventType - no AWS destination configured")
             return
         }
 
-        try {
-            circuitBreaker.execute {
-                retryPolicy.execute(
-                    operation = {
-                        if (isAdminEvent) {
-                            messagePublisher.sendAdminEvent(messageBody, attributes)
-                        } else {
-                            messagePublisher.sendUserEvent(messageBody, attributes)
-                        }
-                    },
-                )
+        var primaryException: Exception? = null
+        destinationMessages.forEach { message ->
+            if (batchProcessor.isRunning()) {
+                batchProcessor.add(message)
+                return@forEach
             }
-        } catch (e: RetryExhaustedException) {
-            addToDeadLetterQueue(message, e)
-            throw e
-        } catch (e: CircuitBreakerOpenException) {
-            addToDeadLetterQueue(message, e)
-            throw e
-        } catch (e: Exception) {
-            addToDeadLetterQueue(message, e)
-            throw e
+
+            try {
+                circuitBreaker.execute {
+                    retryPolicy.execute(
+                        operation = {
+                            when {
+                                message.queueUrl != null ->
+                                    messagePublisher.sendToSqs(message.queueUrl, message.messageBody, message.messageAttributes)
+                                message.topicArn != null ->
+                                    messagePublisher.sendToSns(message.topicArn, message.messageBody, message.messageAttributes)
+                                else -> logger.warn("No destination configured for message: ${message.meta.eventType}")
+                            }
+                        },
+                    )
+                }
+                metrics.recordEventSent(
+                    eventType = eventType,
+                    realm = realm,
+                    destination = formatDestination(message),
+                    sizeBytes = payloadSize,
+                )
+            } catch (e: RetryExhaustedException) {
+                addToDeadLetterQueue(message, e)
+                if (primaryException == null) {
+                    primaryException = e
+                }
+            } catch (e: CircuitBreakerOpenException) {
+                addToDeadLetterQueue(message, e)
+                if (primaryException == null) {
+                    primaryException = e
+                }
+            } catch (e: Exception) {
+                addToDeadLetterQueue(message, e)
+                if (primaryException == null) {
+                    primaryException = e
+                }
+            }
         }
+
+        primaryException?.let { throw it }
     }
 
     private fun addToDeadLetterQueue(
         message: AwsEventMessage,
         exception: Exception,
     ) {
-        val destination = message.queueUrl ?: message.topicArn ?: "unknown"
+        val destination = formatDestination(message)
         deadLetterQueue.add(
             eventType = message.meta.eventType,
             eventData = message.messageBody,
@@ -204,5 +243,18 @@ class AwsEventListenerProvider(
             failureReason = exception.message ?: exception.javaClass.simpleName,
             attemptCount = retryPolicy.getConfig().maxAttempts,
         )
+        metrics.recordEventFailed(
+            eventType = message.meta.eventType,
+            realm = message.meta.realm,
+            destination = destination,
+            errorType = exception.javaClass.simpleName,
+        )
     }
+
+    private fun formatDestination(message: AwsEventMessage): String =
+        when {
+            message.queueUrl != null -> "queue:${message.queueUrl}"
+            message.topicArn != null -> "topic:${message.topicArn}"
+            else -> "unknown"
+        }
 }

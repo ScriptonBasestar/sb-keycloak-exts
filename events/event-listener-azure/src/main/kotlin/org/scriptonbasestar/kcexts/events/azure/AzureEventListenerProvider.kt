@@ -84,22 +84,7 @@ class AzureEventListenerProvider(
                 eventType = event.type.name,
                 realm = event.realmId ?: "unknown",
             )
-
-            val destination =
-                if (config.useQueue) {
-                    "queue:${config.userEventsQueueName}"
-                } else {
-                    "topic:${config.userEventsTopicName}"
-                }
-
-            metrics.recordEventSent(
-                eventType = event.type.name,
-                realm = event.realmId ?: "unknown",
-                destination = destination,
-                sizeBytes = json.toByteArray().size,
-            )
             metrics.stopTimer(timerSample, event.type.name)
-            metrics.updateConnectionStatus(sender.isHealthy())
 
             logger.debug("User event sent to Azure Service Bus: type=${event.type}, userId=${event.userId}")
         } catch (e: CircuitBreakerOpenException) {
@@ -163,22 +148,7 @@ class AzureEventListenerProvider(
                 eventType = eventType,
                 realm = event.realmId ?: "unknown",
             )
-
-            val destination =
-                if (config.useQueue) {
-                    "queue:${config.adminEventsQueueName}"
-                } else {
-                    "topic:${config.adminEventsTopicName}"
-                }
-
-            metrics.recordEventSent(
-                eventType = eventType,
-                realm = event.realmId ?: "unknown",
-                destination = destination,
-                sizeBytes = json.toByteArray().size,
-            )
             metrics.stopTimer(timerSample, eventType)
-            metrics.updateConnectionStatus(sender.isHealthy())
 
             logger.debug(
                 "Admin event sent to Azure Service Bus: type=${event.operationType}, userId=${event.authDetails.userId}",
@@ -203,61 +173,105 @@ class AzureEventListenerProvider(
         eventType: String,
         realm: String,
     ) {
-        val queueName = if (isAdminEvent) config.adminEventsQueueName else config.userEventsQueueName
-        val topicName = if (isAdminEvent) config.adminEventsTopicName else config.userEventsTopicName
+        val payloadSize = messageBody.toByteArray().size
+        val destinationMessages =
+            buildList {
+                if (config.useQueue) {
+                    add(
+                        AzureEventMessage(
+                            senderKey = senderKey,
+                            messageBody = messageBody,
+                            queueName = if (isAdminEvent) config.adminEventsQueueName else config.userEventsQueueName,
+                            topicName = null,
+                            properties = properties,
+                            meta =
+                                EventMeta(
+                                    eventType = eventType,
+                                    realm = realm,
+                                ),
+                            isAdminEvent = isAdminEvent,
+                        ),
+                    )
+                }
+                if (config.useTopic) {
+                    add(
+                        AzureEventMessage(
+                            senderKey = senderKey,
+                            messageBody = messageBody,
+                            queueName = null,
+                            topicName = if (isAdminEvent) config.adminEventsTopicName else config.userEventsTopicName,
+                            properties = properties,
+                            meta =
+                                EventMeta(
+                                    eventType = eventType,
+                                    realm = realm,
+                                ),
+                            isAdminEvent = isAdminEvent,
+                        ),
+                    )
+                }
+            }
 
-        val message =
-            AzureEventMessage(
-                senderKey = senderKey,
-                messageBody = messageBody,
-                queueName = if (config.useQueue) queueName else null,
-                topicName = if (config.useTopic) topicName else null,
-                properties = properties,
-                meta =
-                    EventMeta(
-                        eventType = eventType,
-                        realm = realm,
-                    ),
-                isAdminEvent = isAdminEvent,
-            )
-
-        if (message.queueName == null && message.topicName == null) {
+        if (destinationMessages.isEmpty()) {
             logger.warn("Skipping event $eventType - no Azure Service Bus destination configured")
             return
         }
 
-        if (batchProcessor.isRunning()) {
-            batchProcessor.add(message)
-            return
+        var primaryException: Exception? = null
+        destinationMessages.forEach { message ->
+            if (batchProcessor.isRunning()) {
+                batchProcessor.add(message)
+                return@forEach
+            }
+
+            try {
+                circuitBreaker.execute {
+                    retryPolicy.execute(
+                        operation = {
+                            sendDirect(message)
+                        },
+                    )
+                }
+                metrics.recordEventSent(
+                    eventType = eventType,
+                    realm = realm,
+                    destination = formatDestination(message),
+                    sizeBytes = payloadSize,
+                )
+                metrics.updateConnectionStatus(sender.isHealthy())
+            } catch (e: RetryExhaustedException) {
+                addToDeadLetterQueue(message, e)
+                if (primaryException == null) {
+                    primaryException = e
+                }
+            } catch (e: CircuitBreakerOpenException) {
+                addToDeadLetterQueue(message, e)
+                if (primaryException == null) {
+                    primaryException = e
+                }
+            } catch (e: Exception) {
+                addToDeadLetterQueue(message, e)
+                if (primaryException == null) {
+                    primaryException = e
+                }
+            }
         }
 
-        try {
-            circuitBreaker.execute {
-                retryPolicy.execute(
-                    operation = {
-                        sendDirect(message)
-                    },
-                )
-            }
-        } catch (e: RetryExhaustedException) {
-            addToDeadLetterQueue(message, e)
-            throw e
-        } catch (e: CircuitBreakerOpenException) {
-            addToDeadLetterQueue(message, e)
-            throw e
-        } catch (e: Exception) {
-            addToDeadLetterQueue(message, e)
-            throw e
-        }
+        primaryException?.let { throw it }
     }
 
     private fun sendDirect(message: AzureEventMessage) {
-        when {
-            message.queueName != null ->
-                sender.sendToQueue(message.queueName, message.messageBody, message.properties)
-            message.topicName != null ->
-            sender.sendToTopic(message.topicName, message.messageBody, message.properties)
-            else -> logger.warn("No destination configured for message: ${message.meta.eventType}")
+        var delivered = false
+        message.queueName?.let { queue ->
+            sender.sendToQueue(queue, message.messageBody, message.properties)
+            delivered = true
+        }
+        message.topicName?.let { topic ->
+            sender.sendToTopic(topic, message.messageBody, message.properties)
+            delivered = true
+        }
+        if (!delivered) {
+            logger.warn("No destination configured for message: ${message.meta.eventType}")
         }
     }
 
@@ -324,4 +338,11 @@ class AzureEventListenerProvider(
         )
         metrics.updateConnectionStatus(sender.isHealthy())
     }
+
+    private fun formatDestination(message: AzureEventMessage): String =
+        when {
+            message.queueName != null -> "queue:${message.queueName}"
+            message.topicName != null -> "topic:${message.topicName}"
+            else -> "unknown"
+        }
 }

@@ -5,7 +5,7 @@ AWS SQS 및 SNS 기반 Keycloak 이벤트 리스너 구현체입니다.
 ## 특징
 
 - **AWS SQS/SNS 통합**: AWS SDK v2 사용
-- **유연한 메시징**: SQS, SNS 또는 둘 다 사용 가능
+- **이중 채널 전송**: SQS와 SNS를 동시에 활성화하면 동일 이벤트를 두 채널 모두로 전송
 - **Resilience Patterns**: Circuit Breaker, Retry Policy, DLQ, Batch Processing
 - **AWS 인증**: Instance Profile, Static Credentials 지원
 - **Prometheus 메트릭**: 실시간 모니터링
@@ -49,21 +49,22 @@ AWS SQS 및 SNS 기반 Keycloak 이벤트 리스너 구현체입니다.
     <provider name="aws-event-listener" enabled="true">
         <properties>
             <!-- AWS 기본 설정 -->
-            <property name="awsRegion" value="us-east-1"/>
-            <property name="awsUseInstanceProfile" value="true"/>
+            <property name="aws.region" value="us-east-1"/>
+            <property name="aws.use.instance.profile" value="true"/>
             <!-- 또는 정적 자격 증명 -->
-            <property name="awsAccessKeyId" value="AKIAIOSFODNN7EXAMPLE"/>
-            <property name="awsSecretAccessKey" value="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"/>
+            <property name="aws.access.key.id" value="AKIAIOSFODNN7EXAMPLE"/>
+            <property name="aws.secret.access.key" value="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"/>
 
             <!-- SQS 설정 -->
-            <property name="awsUseSqs" value="true"/>
-            <property name="awsSqsUserEventsQueueUrl" value="https://sqs.us-east-1.amazonaws.com/123456789012/keycloak-user-events"/>
-            <property name="awsSqsAdminEventsQueueUrl" value="https://sqs.us-east-1.amazonaws.com/123456789012/keycloak-admin-events"/>
+            <property name="aws.use.sqs" value="true"/>
+            <property name="aws.sqs.user.events.queue.url" value="https://sqs.us-east-1.amazonaws.com/123456789012/keycloak-user-events"/>
+            <property name="aws.sqs.admin.events.queue.url" value="https://sqs.us-east-1.amazonaws.com/123456789012/keycloak-admin-events"/>
 
             <!-- SNS 설정 (선택) -->
-            <property name="awsUseSns" value="false"/>
-            <property name="awsSnsUserEventsTopicArn" value="arn:aws:sns:us-east-1:123456789012:keycloak-user-events"/>
-            <property name="awsSnsAdminEventsTopicArn" value="arn:aws:sns:us-east-1:123456789012:keycloak-admin-events"/>
+            <!-- SQS와 SNS를 모두 true로 설정하면 두 채널로 동일 이벤트를 전송합니다 -->
+            <property name="aws.use.sns" value="false"/>
+            <property name="aws.sns.user.events.topic.arn" value="arn:aws:sns:us-east-1:123456789012:keycloak-user-events"/>
+            <property name="aws.sns.admin.events.topic.arn" value="arn:aws:sns:us-east-1:123456789012:keycloak-admin-events"/>
 
             <!-- Resilience Patterns -->
             <property name="enableCircuitBreaker" value="true"/>
