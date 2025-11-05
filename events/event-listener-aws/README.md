@@ -19,6 +19,22 @@ AWS SQS 및 SNS 기반 Keycloak 이벤트 리스너 구현체입니다.
 - SQS DLQ 활용 실패 이벤트 관리
 - CloudWatch 통합 모니터링
 
+## AWS 특성과 설계 배경
+
+### 왜 AWS SQS/SNS 조합인가?
+- **서버리스 워크로드 최적화**: Lambda, EventBridge 등과 자연스럽게 연동되어 Keycloak 이벤트를 서버리스 마이크로서비스로 전달하기 용이합니다.
+- **내장 DLQ & 재시도**: SQS의 Redrive 정책과 SNS 구독별 재시도를 활용해 별도 브로커 없이도 운영 탄력성을 확보할 수 있습니다.
+- **보안 및 규제 준수**: AWS IAM, KMS, PrivateLink 등과 결합해 규정 준수 환경에서 Keycloak 이벤트를 안전하게 전달하려는 요구에 부합합니다.
+- **관리형 서비스**: 브로커 운영 부담이 없고, 비용 구조가 사용량 기반으로 명확하여 Keycloak 규모 성장에 따라 유연하게 확장됩니다.
+
+### 모듈 구조와 설계 의도
+- **양방향 전송 추상화**: `AwsEventListenerConfig`와 `AwsDestinationPublisher` 계층을 통해 SQS, SNS, 혹은 둘 다를 동시에 사용할 수 있도록 설계했습니다.
+- **Factory 주도 초기화**: `AwsEventListenerProviderFactory`가 AWS 자격 증명(AWS SDK v2 `DefaultCredentialsProvider`), 회복력 컴포넌트, 메트릭 수집 객체를 초기화하여 Provider는 이벤트 처리에 집중합니다.
+- **메시지 모델링**: `AwsEventMessage`에 대상(queueUrl/topicArn), 전송 채널, EventMeta를 포함해 DLQ 및 관찰성 도구가 한눈에 파악할 수 있도록 구성했습니다.
+- **공통 회복력 재사용**: CircuitBreaker, RetryPolicy, DeadLetterQueue, BatchProcessor는 `event-listener-common` 구현체를 그대로 활용해 다른 모듈과 동일한 운영 경험을 제공합니다.
+- **자격 증명 추상화**: Instance Profile, 정적 키, STS AssumeRole 등 다양한 인증 방식을 지원하도록 AWS SDK v2의 표준 Credential Provider 체인을 그대로 노출합니다.
+- **관찰성 통합**: `AwsEventMetrics`가 SQS/SNS 전송 건수, DLQ 적재 상황을 Prometheus에 수집하고 `events/grafana-dashboard.json` 대시보드와 연계됩니다.
+
 ## 의존성
 
 - **AWS SDK v2**: 2.29.45

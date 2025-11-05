@@ -21,6 +21,21 @@ Keycloak 이벤트를 Apache Kafka로 실시간 전송하는 이벤트 리스너
   - **Batch Processing**: 배치 처리로 처리량 향상
   - **Prometheus Metrics**: 운영 메트릭 수집
 
+## Kafka 특성과 설계 배경
+
+### Apache Kafka를 선택한 이유
+- **파티셔닝 기반 수평 확장**: Keycloak 다중 Realm 환경에서 초당 수천 건의 이벤트를 안정적으로 처리하기 위해 파티션을 활용한 선형 스케일아웃을 지원합니다.
+- **고가용성 & 내장 재시도**: 복제 팩터와 `acks` 전략을 통해 이벤트 손실 가능성을 낮추고, 운영자가 익숙한 Kafka 모니터링 스택을 그대로 사용할 수 있습니다.
+- **하위 호환성**: JSON 포맷으로 직렬화해 Kafka Connect, Flink, Spark 등 스트리밍 파이프라인에 즉시 연결할 수 있도록 설계했습니다.
+
+### 모듈 구조와 설계 의도
+- **Factory + Provider 패턴**: `KafkaEventListenerProviderFactory`가 Keycloak 부팅 시 구성 요소(CircuitBreaker, RetryPolicy, KafkaProducerManager 등)를 초기화하고, Provider는 이벤트 처리에만 집중하도록 분리했습니다.
+- **공통 모듈 재사용**: 직렬화, 회복력 패턴, 메트릭 수집은 `event-listener-common`을 그대로 활용해 다른 메시징 모듈과 운영 경험을 통일했습니다.
+- **토픽 분리 설계**: `eventTopic`과 `adminEventTopic`을 분리하여 개인정보 접근 제어, 파이프라인 분기, 파티션 전략을 유연하게 구성할 수 있습니다.
+- **키 전략**: `realm:type:userId` 패턴을 Kafka 메시지 키로 사용해 동일 사용자의 이벤트 순서를 보장하고, 파티션 키로서의 활용도를 높였습니다.
+- **배치 & 단건 전송 이중 구조**: 배치 모드가 활성화되면 `BatchProcessor`가 Flush 조건을 충족할 때까지 메시지를 모으고, 기본 모드에서는 즉시 전송해 지연 시간이 중요한 워크로드도 대응합니다.
+- **관찰성 강화**: `KafkaEventMetrics`가 요청 지연, 성공/실패 건수, DLQ 상태를 Prometheus로 내보내 Grafana 대시보드(`events/grafana-dashboard.json`)와 자연스럽게 연동됩니다.
+
 ## 요구사항
 
 - **Keycloak**: 23.x 이상

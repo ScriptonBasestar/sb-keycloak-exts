@@ -11,6 +11,22 @@ RabbitMQ 기반의 Keycloak 이벤트 리스너 구현체입니다. Keycloak에�
 - **메트릭 수집**: 이벤트 전송 성공/실패 통계 수집
 - **Publisher Confirms**: 메시지 전송 확인 기능 (선택적)
 
+## RabbitMQ 특성과 설계 배경
+
+### 왜 RabbitMQ를 선택했나요?
+- **AMQP 호환성**: AMQP 0.9.1 프로토콜을 따르는 기존 시스템과 쉽게 통합할 수 있어 레거시 환경에서도 Keycloak 이벤트 연동이 간단합니다.
+- **교차 토폴로지 지원**: Topic, Direct, Fanout 등 Exchange 타입을 활용해 Realm/이벤트별 라우팅 정책을 유연하게 구성할 수 있습니다.
+- **안정적인 운영**: 자동 재연결, 흐름 제어(QoS), Publisher Confirm 등 RabbitMQ 고유 기능으로 이벤트 손실 및 중복을 최소화합니다.
+- **경량 배포**: Kafka 대비 적은 리소스로도 고가용성 구성이 가능해 온프레미스 및 하이브리드 환경에 적합합니다.
+
+### 모듈 구조와 설계 의도
+- **Exchange 중심 라우팅**: `RabbitMQEventListenerConfig`가 Exchange 이름/타입, 라우팅 키 프리픽스를 정의해 조직 표준에 맞는 메시지 흐름을 구현합니다.
+- **Connection Manager 추상화**: `RabbitMQConnectionManager`에서 ConnectionFactory, 자동 복구, Publisher Confirm 설정을 일괄 처리해 Provider는 이벤트 로직에 집중합니다.
+- **메시지 캡슐화**: `RabbitMQEventMessage`에 라우팅 키, Exchange, `EventMeta`를 함께 담아 DLQ 및 관찰성 도구가 문제 원인과 대상을 쉽게 추적할 수 있습니다.
+- **공통 회복력 재사용**: CircuitBreaker, RetryPolicy, DeadLetterQueue, BatchProcessor를 `event-listener-common`에서 가져와 다른 메시징 모듈과 동일한 장애 대응 흐름을 유지합니다.
+- **라우팅 키 전략**: `userEventRoutingKey.realm.eventType`, `adminEventRoutingKey.realm.operation` 구조로 메시지를 구성해 토폴로지 확장이나 권한 분리를 단순화했습니다.
+- **관찰성**: `RabbitMQEventMetrics`가 전송 성공/실패, 지연 시간을 Prometheus에 노출하고 `events/grafana-dashboard.json` 대시보드와 연동됩니다.
+
 ## 아키텍처
 
 ```
