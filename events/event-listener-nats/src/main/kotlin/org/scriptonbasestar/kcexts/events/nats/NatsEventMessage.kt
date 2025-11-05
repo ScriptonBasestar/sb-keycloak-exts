@@ -1,11 +1,12 @@
 package org.scriptonbasestar.kcexts.events.nats
 
+import org.scriptonbasestar.kcexts.events.common.model.EventMeta
+
 /**
  * NATS event message wrapper for batch processing
  */
 data class NatsEventMessage(
     val subject: String,
     val message: String,
-    val eventType: String,
-    val realm: String,
+    val meta: EventMeta,
 )

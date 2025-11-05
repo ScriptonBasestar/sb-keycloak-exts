@@ -150,10 +150,10 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
                                                 message.properties,
                                             )
 
-                                        else -> logger.warn("Batch message missing destination: ${message.eventType}")
+                                        else -> logger.warn("Batch message missing destination: ${message.meta.eventType}")
                                     }
                                 } catch (e: Exception) {
-                                    logger.error("Failed to send batched message: ${message.eventType}", e)
+                                    logger.error("Failed to send batched message: ${message.meta.eventType}", e)
                                     addToDeadLetterQueue(message, e)
                                 } finally {
                                     metrics.updateConnectionStatus(sender.isHealthy())
@@ -221,9 +221,9 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
     ) {
         val destination = message.queueName ?: message.topicName ?: "unknown"
         deadLetterQueue.add(
-            eventType = message.eventType,
+            eventType = message.meta.eventType,
             eventData = message.messageBody,
-            realm = message.realm,
+            realm = message.meta.realm,
             destination = destination,
             failureReason = exception.message ?: exception.javaClass.simpleName,
             attemptCount = retryPolicy.getConfig().maxAttempts,
@@ -238,8 +238,8 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
         )
 
         metrics.recordEventFailed(
-            eventType = message.eventType,
-            realm = message.realm,
+            eventType = message.meta.eventType,
+            realm = message.meta.realm,
             destination =
                 if (message.queueName != null) {
                     "queue:${message.queueName}"

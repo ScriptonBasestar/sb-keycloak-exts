@@ -12,6 +12,7 @@ import org.scriptonbasestar.kcexts.events.aws.publisher.AwsMessagePublisher
 import org.scriptonbasestar.kcexts.events.common.batch.BatchProcessor
 import org.scriptonbasestar.kcexts.events.common.dlq.DeadLetterQueue
 import org.scriptonbasestar.kcexts.events.common.model.AuthDetails
+import org.scriptonbasestar.kcexts.events.common.model.EventMeta
 import org.scriptonbasestar.kcexts.events.common.model.KeycloakAdminEvent
 import org.scriptonbasestar.kcexts.events.common.model.KeycloakEvent
 import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreaker
@@ -154,8 +155,11 @@ class AwsEventListenerProvider(
                 queueUrl = if (config.useSqs) queueUrl else null,
                 topicArn = if (config.useSns) topicArn else null,
                 messageAttributes = attributes,
-                eventType = eventType,
-                realm = realm,
+                meta =
+                    EventMeta(
+                        eventType = eventType,
+                        realm = realm,
+                    ),
             )
 
         if (batchProcessor.isRunning()) {
@@ -193,9 +197,9 @@ class AwsEventListenerProvider(
     ) {
         val destination = message.queueUrl ?: message.topicArn ?: "unknown"
         deadLetterQueue.add(
-            eventType = message.eventType,
+            eventType = message.meta.eventType,
             eventData = message.messageBody,
-            realm = message.realm,
+            realm = message.meta.realm,
             destination = destination,
             failureReason = exception.message ?: exception.javaClass.simpleName,
             attemptCount = retryPolicy.getConfig().maxAttempts,

@@ -14,6 +14,7 @@ import org.scriptonbasestar.kcexts.events.common.dlq.DeadLetterQueue
 import org.scriptonbasestar.kcexts.events.common.model.AuthDetails
 import org.scriptonbasestar.kcexts.events.common.model.KeycloakAdminEvent
 import org.scriptonbasestar.kcexts.events.common.model.KeycloakEvent
+import org.scriptonbasestar.kcexts.events.common.model.EventMeta
 import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreaker
 import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreakerOpenException
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryExhaustedException
@@ -212,8 +213,11 @@ class AzureEventListenerProvider(
                 queueName = if (config.useQueue) queueName else null,
                 topicName = if (config.useTopic) topicName else null,
                 properties = properties,
-                eventType = eventType,
-                realm = realm,
+                meta =
+                    EventMeta(
+                        eventType = eventType,
+                        realm = realm,
+                    ),
                 isAdminEvent = isAdminEvent,
             )
 
@@ -252,8 +256,8 @@ class AzureEventListenerProvider(
             message.queueName != null ->
                 sender.sendToQueue(message.queueName, message.messageBody, message.properties)
             message.topicName != null ->
-                sender.sendToTopic(message.topicName, message.messageBody, message.properties)
-            else -> logger.warn("No destination configured for message: ${message.eventType}")
+            sender.sendToTopic(message.topicName, message.messageBody, message.properties)
+            else -> logger.warn("No destination configured for message: ${message.meta.eventType}")
         }
     }
 
@@ -263,9 +267,9 @@ class AzureEventListenerProvider(
     ) {
         val destination = message.queueName ?: message.topicName ?: "unknown"
         deadLetterQueue.add(
-            eventType = message.eventType,
+            eventType = message.meta.eventType,
             eventData = message.messageBody,
-            realm = message.realm,
+            realm = message.meta.realm,
             destination = destination,
             failureReason = exception.message ?: exception.javaClass.simpleName,
             attemptCount = retryPolicy.getConfig().maxAttempts,
@@ -279,8 +283,8 @@ class AzureEventListenerProvider(
                 },
         )
         metrics.recordEventFailed(
-            eventType = message.eventType,
-            realm = message.realm,
+            eventType = message.meta.eventType,
+            realm = message.meta.realm,
             destination =
                 if (message.queueName != null) {
                     "queue:${message.queueName}"

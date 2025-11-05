@@ -1,5 +1,7 @@
 package org.scriptonbasestar.kcexts.events.azure
 
+import org.scriptonbasestar.kcexts.events.common.model.EventMeta
+
 /**
  * Azure Service Bus event message wrapper for batch processing
  */
@@ -9,7 +11,6 @@ data class AzureEventMessage(
     val queueName: String?,
     val topicName: String?,
     val properties: Map<String, String>,
-    val eventType: String,
-    val realm: String,
+    val meta: EventMeta,
     val isAdminEvent: Boolean,
 )

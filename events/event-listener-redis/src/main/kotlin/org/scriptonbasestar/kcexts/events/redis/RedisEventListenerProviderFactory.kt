@@ -162,9 +162,9 @@ class RedisEventListenerProviderFactory : EventListenerProviderFactory {
                     logger.error("Batch processing failed for ${batch.size} messages", exception)
                     batch.forEach { message ->
                         deadLetterQueue.add(
-                            eventType = message.eventType,
+                            eventType = message.meta.eventType,
                             eventData = message.fields.toString(),
-                            realm = message.realm,
+                            realm = message.meta.realm,
                             destination = message.streamKey,
                             failureReason = exception.message ?: "Unknown error",
                             attemptCount = maxRetryAttempts,

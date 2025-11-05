@@ -9,6 +9,7 @@ import org.keycloak.models.KeycloakSession
 import org.scriptonbasestar.kcexts.events.common.batch.BatchProcessor
 import org.scriptonbasestar.kcexts.events.common.dlq.DeadLetterQueue
 import org.scriptonbasestar.kcexts.events.common.model.AuthDetails
+import org.scriptonbasestar.kcexts.events.common.model.EventMeta
 import org.scriptonbasestar.kcexts.events.common.model.KeycloakAdminEvent
 import org.scriptonbasestar.kcexts.events.common.model.KeycloakEvent
 import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreaker
@@ -193,8 +194,11 @@ class RabbitMQEventListenerProvider(
                 routingKey = routingKey,
                 message = message,
                 exchange = exchange,
-                eventType = eventType,
-                realm = realm,
+                meta =
+                    EventMeta(
+                        eventType = eventType,
+                        realm = realm,
+                    ),
             )
 
         // Check if batching is enabled
@@ -242,9 +246,9 @@ class RabbitMQEventListenerProvider(
         exception: Exception,
     ) {
         deadLetterQueue.add(
-            eventType = message.eventType,
+            eventType = message.meta.eventType,
             eventData = message.message,
-            realm = message.realm,
+            realm = message.meta.realm,
             destination = message.exchange,
             failureReason = exception.message ?: exception.javaClass.simpleName,
             attemptCount = retryPolicy.getConfig().maxAttempts,

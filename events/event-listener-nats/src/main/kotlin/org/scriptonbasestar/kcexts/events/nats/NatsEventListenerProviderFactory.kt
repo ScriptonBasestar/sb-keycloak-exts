@@ -177,9 +177,9 @@ class NatsEventListenerProviderFactory : EventListenerProviderFactory {
                     logger.error("Batch processing failed for ${batch.size} messages", exception)
                     batch.forEach { message ->
                         deadLetterQueue.add(
-                            eventType = message.eventType,
+                            eventType = message.meta.eventType,
                             eventData = message.message,
-                            realm = message.realm,
+                            realm = message.meta.realm,
                             destination = message.subject,
                             failureReason = exception.message ?: "Unknown error",
                             attemptCount = maxRetryAttempts,

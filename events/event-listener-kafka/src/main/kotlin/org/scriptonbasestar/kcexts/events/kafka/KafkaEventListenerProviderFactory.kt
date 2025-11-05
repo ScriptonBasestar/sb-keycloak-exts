@@ -158,9 +158,9 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
                     logger.error("Batch processing failed for ${batch.size} messages", exception)
                     batch.forEach { message ->
                         deadLetterQueue.add(
-                            eventType = message.eventType,
+                            eventType = message.meta.eventType,
                             eventData = message.value,
-                            realm = message.realm,
+                            realm = message.meta.realm,
                             destination = message.topic,
                             failureReason = exception.message ?: "Unknown error",
                             attemptCount = maxRetryAttempts,
