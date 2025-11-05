@@ -1,330 +1,209 @@
 # NATS Event Listener for Keycloak
 
-Keycloak Event Listener that publishes events to NATS messaging system with subject-based routing.
+Keycloak 이벤트를 NATS subject 기반 메시징으로 전달하는 모듈입니다. `event-listener-common`에서 제공하는 이벤트 표준화, 회복 탄력성(resilience), 메트릭 수집 기능 위에 NATS 전용 연결 관리와 subject 전략을 덧붙였습니다.
 
-## Features
+## Module Overview
+- Keycloak의 User/Admin 이벤트를 JSON으로 직렬화하고 NATS subject로 publish 합니다.
+- `event-listener-common`의 `CircuitBreaker`, `RetryPolicy`, `DeadLetterQueue`, `BatchProcessor`, `EventMetrics`를 재사용하여 모든 메시징 모듈이 동일한 운영 특성을 갖습니다.
+- 단일 Keycloak 인스턴스에서 여러 Realm 이벤트를 처리할 수 있도록 subject는 `{base}.{realm}.{eventType}` 패턴을 따릅니다.
+- Connection pooling과 자동 재연결을 통해 고가용성 NATS 클러스터에도 안정적으로 연결됩니다.
 
-- ✅ **User Events**: LOGIN, LOGOUT, REGISTER 등 모든 Keycloak 사용자 이벤트
-- ✅ **Admin Events**: 사용자 생성, 설정 변경 등 관리자 이벤트
-- ✅ **Subject-based Routing**: `{base}.{realm}.{eventType}` 형식의 subject 자동 생성
-- ✅ **Event Filtering**: 이벤트 타입별 필터링 지원
-- ✅ **Metrics Collection**: 성공/실패/지연시간 메트릭 수집
-- ✅ **Automatic Reconnection**: 연결 끊김 시 자동 재연결
-- ✅ **TLS Support**: 보안 연결 지원
-- ✅ **Token/Username Authentication**: 다양한 인증 방식 지원
+## Why We Provide a Dedicated NATS Module
+| 요구사항 | NATS가 제공하는 특성 | 모듈 설계 반영 |
+|----------|---------------------|---------------|
+| 초경량, 낮은 지연 | 단일 바이너리, in-memory 라우팅 | 최소한의 직렬화와 즉시 publish 방식 |
+| 동적 subject 라우팅 | 와일드카드 subject (`foo.*.bar`) | Realm/이벤트 타입별 subject 자동 생성 |
+| 단순 운영 | JetStream 없이도 사용 가능 | 외부 브로커 의존성 낮추기, 연결 실패 시 빠른 재시도 |
+| 유연한 인증 | 토큰, Basic Auth, TLS | `serverUrl`, `token`, `username/password`, `useTls` 옵션 제공 |
 
-## Architecture
+## Design Rationale
+### Shared abstractions
+- **이벤트 표준화**: 모든 모듈은 `KeycloakEvent`/`KeycloakAdminEvent` 모델을 사용해 소비자 애플리케이션이 동일 JSON 구조를 소비할 수 있게 합니다.
+- **회복 탄력성**: 공통 `CircuitBreaker`와 `RetryPolicy`를 사용하여 전송 실패 시 빠르게 복구하거나 Dead Letter Queue로 우회합니다.
+- **운영 모니터링**: `EventMetrics` 인터페이스 구현체(`NatsEventMetrics`)가 Prometheus exporter와 연동되며 전체 이벤트 흐름을 관측할 수 있습니다.
 
+### NATS-specific decisions
+- **Connection Manager**: 서버 URL 별로 하나의 `NatsConnectionManager`를 유지하여 재연결 시 오버헤드를 줄이고, NATS의 빠른 핸드셰이크 특성을 살립니다.
+- **noEcho 강제 적용**: Keycloak이 publish한 이벤트가 다시 자기 자신에게 전달되는 것을 방지하기 위해 NATS 클라이언트는 항상 `noEcho()` 모드로 연결됩니다.
+- **Subject 설계**: `userEventSubject` / `adminEventSubject`를 기반으로 realm과 이벤트 타입을 suffix로 붙여 운영 중인 모든 Realm을 단일 구독으로 모니터링할 수 있습니다.
+- **배치 처리 옵션**: NATS는 단일 메시지 전송에 최적화되어 있지만, 대량 이벤트 처리 시 네트워크 효율을 위해 `BatchProcessor`를 선택적으로 활성화할 수 있도록 했습니다.
+
+## Event Flow
 ```
-┌─────────────┐
-│  Keycloak   │
-│   Events    │
-└──────┬──────┘
-       │
-       v
-┌──────────────────┐
-│ NATS Event       │
-│ Listener         │
-│ Provider         │
-└────────┬─────────┘
-         │
-         v
-┌────────────────────┐     ┌─────────────┐
-│ NATS Connection    │────>│ NATS Server │
-│ Manager            │     └─────────────┘
-└────────────────────┘
-         │
-         v
-┌────────────────────┐
-│ Event Metrics      │
-└────────────────────┘
-```
-
-## Subject Format
-
-### User Events
-```
-{userEventSubject}.{realmId}.{eventType}
-```
-
-Example:
-- `keycloak.events.user.master.LOGIN`
-- `keycloak.events.user.myrealm.LOGOUT`
-- `keycloak.events.user.prod.REGISTER`
-
-### Admin Events
-```
-{adminEventSubject}.{realmId}.{operationType}
+┌────────────┐   ① 이벤트 발생    ┌─────────────────────────┐
+│  Keycloak  │ ───────────────▶  │ NatsEventListenerProvider │
+└────────────┘                   │ - 공통 모델 변환          │
+                                 │ - subject 생성            │
+                                 └─────────────┬────────────┘
+                                               │ ② 회복 탄력성 파이프라인
+                                               ▼
+                                 ┌─────────────────────────┐
+                                 │ CircuitBreaker / Retry │
+                                 │ DeadLetterQueue / Batch │
+                                 └─────────────┬──────────┘
+                                               │ ③ publish
+                                               ▼
+                                 ┌─────────────────────────┐
+                                 │ NatsConnectionManager   │
+                                 └─────────────┬──────────┘
+                                               │
+                                               ▼
+                                         ┌────────┐
+                                         │ NATS   │
+                                         └────────┘
 ```
 
-Example:
-- `keycloak.events.admin.master.CREATE`
-- `keycloak.events.admin.myrealm.UPDATE`
-- `keycloak.events.admin.prod.DELETE`
-
-## Configuration
-
-### Keycloak Configuration (standalone.xml)
-
-```xml
-<spi name="eventsListener">
-    <provider name="nats-event-listener" enabled="true">
-        <properties>
-            <property name="serverUrl" value="nats://localhost:4222"/>
-            <property name="userEventSubject" value="keycloak.events.user"/>
-            <property name="adminEventSubject" value="keycloak.events.admin"/>
-            <property name="enableUserEvents" value="true"/>
-            <property name="enableAdminEvents" value="true"/>
-        </properties>
-    </provider>
-</spi>
-```
-
-### Configuration with Authentication
-
-#### Token Authentication
-```xml
-<property name="serverUrl" value="nats://prod-server:4222"/>
-<property name="token" value="your-auth-token"/>
-<property name="useTls" value="true"/>
-```
-
-#### Username/Password Authentication
-```xml
-<property name="serverUrl" value="nats://prod-server:4222"/>
-<property name="username" value="keycloak"/>
-<property name="password" value="secret"/>
-```
-
-### Event Filtering
-```xml
-<property name="enableUserEvents" value="true"/>
-<property name="enableAdminEvents" value="false"/>
-<property name="includedEventTypes" value="LOGIN,LOGOUT,REGISTER"/>
-```
-
-### Connection Settings
-```xml
-<property name="connectionTimeout" value="30000"/>
-<property name="maxReconnects" value="60"/>
-<property name="reconnectWait" value="2000"/>
-<property name="maxPingsOut" value="2"/>
-```
-
-## All Configuration Options
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `serverUrl` | `nats://localhost:4222` | NATS server URL |
-| `username` | `null` | Username for authentication |
-| `password` | `null` | Password for authentication |
-| `token` | `null` | Token for authentication |
-| `useTls` | `false` | Enable TLS connection |
-| `userEventSubject` | `keycloak.events.user` | Base subject for user events |
-| `adminEventSubject` | `keycloak.events.admin` | Base subject for admin events |
-| `enableUserEvents` | `true` | Enable user event publishing |
-| `enableAdminEvents` | `true` | Enable admin event publishing |
-| `includedEventTypes` | `` (all) | Comma-separated list of event types to include |
-| `connectionTimeout` | `60000` | Connection timeout (ms) |
-| `maxReconnects` | `60` | Maximum reconnection attempts |
-| `reconnectWait` | `2000` | Wait time between reconnections (ms) |
-| `noEcho` | `false` | Disable echo for published messages |
-| `maxPingsOut` | `2` | Maximum outstanding pings |
-
-## Event Message Format
-
-### User Event JSON
+## Message Model & Subject Template
+### User events
+- Subject pattern: `{userEventSubject}.{realmId}.{eventType}`
+- Payload example:
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "time": 1699012345678,
+  "id": "d48c8a3a-8100-4d0e-8cee-6f1f15f61310",
+  "time": 1730182435021,
   "type": "LOGIN",
   "realmId": "master",
-  "clientId": "account",
-  "userId": "user-123",
-  "sessionId": "session-456",
-  "ipAddress": "192.168.1.100",
+  "clientId": "account-console",
+  "userId": "a2b8c3",
+  "sessionId": "7d6f1f",
+  "ipAddress": "192.168.10.12",
   "details": {
-    "username": "john.doe",
-    "auth_method": "openid-connect"
+    "authMethod": "openid-connect"
   }
 }
 ```
 
-### Admin Event JSON
+### Admin events
+- Subject pattern: `{adminEventSubject}.{realmId}.{operationType}`
+- Payload example:
 ```json
 {
-  "id": "650e8400-e29b-41d4-a716-446655440000",
-  "time": 1699012345678,
+  "id": "3b9c9f04-4e4a-4aa0-9f2a-31a0e7f4c41d",
+  "time": 1730182439012,
   "operationType": "CREATE",
   "realmId": "master",
   "authDetails": {
     "realmId": "master",
     "clientId": "admin-cli",
-    "userId": "admin-123",
-    "ipAddress": "192.168.1.1"
+    "userId": "0f1aa21",
+    "ipAddress": "192.168.10.10"
   },
-  "resourcePath": "users/user-456",
-  "representation": "{\"username\":\"new.user\",\"email\":\"new.user@example.com\"}"
+  "resourcePath": "users/0f1aa21",
+  "representation": "{...}"
 }
 ```
 
-## NATS Consumer Example
-
-### Go Consumer
-```go
-package main
-
-import (
-    "encoding/json"
-    "log"
-    "github.com/nats-io/nats.go"
-)
-
-type KeycloakEvent struct {
-    ID        string            `json:"id"`
-    Time      int64             `json:"time"`
-    Type      string            `json:"type"`
-    RealmID   string            `json:"realmId"`
-    UserID    string            `json:"userId"`
-    Details   map[string]string `json:"details"`
-}
-
-func main() {
-    nc, _ := nats.Connect(nats.DefaultURL)
-    defer nc.Close()
-
-    // Subscribe to all user events in all realms
-    nc.Subscribe("keycloak.events.user.>", func(m *nats.Msg) {
-        var event KeycloakEvent
-        json.Unmarshal(m.Data, &event)
-        log.Printf("Received event: %s from user %s", event.Type, event.UserID)
-    })
-
-    // Subscribe only to LOGIN events in master realm
-    nc.Subscribe("keycloak.events.user.master.LOGIN", func(m *nats.Msg) {
-        var event KeycloakEvent
-        json.Unmarshal(m.Data, &event)
-        log.Printf("User logged in: %s", event.UserID)
-    })
-
-    select {}
-}
+## Configuration
+### Quick start (Keycloak `standalone.xml`)
+```xml
+<spi name="eventsListener">
+  <provider name="nats-event-listener" enabled="true">
+    <properties>
+      <property name="serverUrl" value="nats://localhost:4222"/>
+      <property name="userEventSubject" value="keycloak.events.user"/>
+      <property name="adminEventSubject" value="keycloak.events.admin"/>
+    </properties>
+  </provider>
+</spi>
 ```
 
-### Node.js Consumer
-```javascript
-const NATS = require('nats');
+### Core connection
+| Property | Default | Notes |
+|----------|---------|-------|
+| `serverUrl` | `nats://localhost:4222` | 단일 서버 혹은 `nats://host1:4222,nats://host2:4222` 형태 |
+| `connectionTimeout` | `60000` | ms 기준 연결 타임아웃 |
+| `maxReconnects` | `60` | 재연결 시도 횟수, `-1`이면 무한 |
+| `reconnectWait` | `2000` | 재연결 사이 지연(ms) |
+| `maxPingsOut` | `2` | heartbeat 실패 허용 횟수 |
+| `useTls` | `false` | TLS 필요 시 `true` |
+| `noEcho` | `true` (강제) | 서버 echo 방지. 옵션 값과 무관하게 항상 활성화됩니다. |
 
-const nc = await NATS.connect({ servers: 'nats://localhost:4222' });
+### Authentication
+| Property | Description |
+|----------|-------------|
+| `token` | NATS 토큰 기반 인증 |
+| `username` / `password` | Basic 인증 (둘 다 지정 시 적용) |
 
-// Subscribe to all user events
-const sub = nc.subscribe('keycloak.events.user.>');
-for await (const m of sub) {
-  const event = JSON.parse(m.string());
-  console.log(`Event: ${event.type}, User: ${event.userId}`);
-}
-```
+### Subjects & Filtering
+| Property | Default | Description |
+|----------|---------|-------------|
+| `userEventSubject` | `keycloak.events.user` | Realm/이벤트 suffix가 뒤따릅니다. |
+| `adminEventSubject` | `keycloak.events.admin` | Realm/operation suffix가 뒤따릅니다. |
+| `enableUserEvents` | `true` | 사용자 이벤트 전송 토글 |
+| `enableAdminEvents` | `true` | 관리자 이벤트 전송 토글 |
+| `includedEventTypes` | (all) | `LOGIN,LOGOUT` 형태의 화이트리스트 |
 
-## Metrics
+### Resilience & Delivery Safety
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `enableCircuitBreaker` | `true` | 빠른 실패 차단, Keycloak thread 보호 |
+| `circuitBreakerFailureThreshold` | `5` | 연속 실패 허용 횟수 |
+| `circuitBreakerOpenTimeoutSeconds` | `60` | open 상태 유지 시간 |
+| `enableRetry` | `true` | 지수 백오프 기반 재시도 |
+| `maxRetryAttempts` | `3` | 재시도 횟수 |
+| `retryInitialDelayMs` | `100` | 첫 지연(ms) |
+| `retryMaxDelayMs` | `10000` | 최장 지연(ms) |
+| `enableDeadLetterQueue` | `true` | 실패 메시지 보관 |
+| `dlqMaxSize` | `10000` | 메모리 내 최대 보관 수 |
+| `dlqPersistToFile` | `false` | 파일 기반 저장 여부 |
+| `dlqPath` | `./dlq/nats` | DLQ 파일 경로 (활성화 시) |
 
-메트릭은 자동으로 수집되며 다음 정보를 포함합니다:
+### Throughput tuning
+| Property | Default | Description |
+|----------|---------|-------------|
+| `enableBatching` | `false` | 배치 처리 토글 |
+| `batchSize` | `100` | 배치 최대 메시지 수 |
+| `batchFlushIntervalMs` | `5000` | 배치 flush 주기(ms) |
 
-- **totalSent**: 성공적으로 전송된 이벤트 수
-- **totalFailed**: 실패한 이벤트 수
-- **avgLatencyMs**: 평균 처리 지연시간 (밀리초)
-- **errorsByType**: 에러 타입별 카운트
-- **eventsByType**: 이벤트 타입별 카운트
+### Observability
+| Property | Default | Description |
+|----------|---------|-------------|
+| `enablePrometheus` | `false` | 내장 Prometheus HTTP exporter |
+| `prometheusPort` | `9092` | exporter 바인딩 포트 |
+| `enableJvmMetrics` | `true` | JVM 메트릭 포함 여부 |
+
+## Metrics & Monitoring
+- `NatsEventMetrics`는 전송 성공/실패, 이벤트 타입별 카운트, 평균 지연 시간을 메모리에 집계합니다.
+- Prometheus exporter를 활성화하면 `/metrics` 엔드포인트에서 `keycloak_events_sent_total`, `keycloak_events_failed_total`, `keycloak_event_duration_seconds` 지표를 제공합니다.
+- Dead Letter Queue는 실패한 이벤트 전체 페이로드와 실패 원인을 저장하므로 운영 중 원인 분석이 가능합니다.
 
 ## Deployment
-
-### JAR 배포
-
-1. 빌드:
+### Build & install JAR
 ```bash
 ./gradlew :events:event-listener-nats:build
-```
-
-2. JAR 파일 복사:
-```bash
 cp events/event-listener-nats/build/libs/event-listener-nats-*.jar \
    $KEYCLOAK_HOME/providers/
 ```
+Keycloak을 재시작하면 SPI가 로드됩니다.
 
-3. Keycloak 재시작
-
-### Docker 배포
-
-Dockerfile:
+### Docker layer
 ```dockerfile
 FROM quay.io/keycloak/keycloak:26.0.7
-
-COPY events/event-listener-nats/build/libs/event-listener-nats-*.jar \
-     /opt/keycloak/providers/
-
+COPY events/event-listener-nats/build/libs/event-listener-nats-*.jar /opt/keycloak/providers/
 RUN /opt/keycloak/bin/kc.sh build
 ```
 
-## Testing
+## Testing & Local Verification
+1. NATS 서버 실행: `docker run -p 4222:4222 nats:latest`
+2. Keycloak에서 `nats-event-listener` SPI 활성화
+3. `nats sub "keycloak.events.user.>" -s nats://localhost:4222`로 수신 확인
+4. 테스트 사용자 로그인/로그아웃으로 이벤트 흐름 검증
+5. 단위 테스트: `./gradlew :events:event-listener-nats:test`
 
-### Unit Tests
-```bash
-./gradlew :events:event-listener-nats:test
-```
+## Operational Tips
+- subject 와일드카드(`keycloak.events.user.>`)를 활용하면 Realm 추가 시 코드 수정 없이 구독할 수 있습니다.
+- 대량 이벤트가 예상되면 Keycloak 클러스터별 subject prefix를 다르게 구성하여 소비자 간 트래픽을 분산하세요.
+- `totalFailed`와 Dead Letter Queue 파일을 주기적으로 확인해 네트워크 혹은 인증 문제를 조기에 발견합니다.
+- 프로덕션 환경에서는 TLS(`useTls=true`)와 인증 토큰을 반드시 사용하고, NATS 서버 측에서도 계정 권한을 최소화하세요.
 
-### NATS Server로 통합 테스트
-
-1. NATS 서버 시작:
-```bash
-docker run -p 4222:4222 nats:latest
-```
-
-2. Keycloak 설정 및 실행
-
-3. 이벤트 구독 확인:
-```bash
-nats sub "keycloak.events.user.>" -s nats://localhost:4222
-```
-
-4. Keycloak에서 로그인/로그아웃 테스트
-
-## Troubleshooting
-
-### 연결 실패
-```
-ERROR: Failed to connect to NATS server
-```
-**해결**: NATS 서버 URL과 포트 확인
-
-### 이벤트가 전송되지 않음
-1. Keycloak Admin Console > Events > Config 확인
-2. Event Listeners에 `nats-event-listener` 추가 확인
-3. Save Events ON 확인
-
-### Subject 구독 안 됨
-- Wildcard 사용: `keycloak.events.user.>` (모든 realm, 모든 이벤트)
-- 특정 realm: `keycloak.events.user.master.>`
-- 특정 이벤트: `keycloak.events.user.*.LOGIN`
-
-## Comparison with Other Messaging Systems
-
-| Feature | NATS | Kafka | RabbitMQ |
-|---------|------|-------|----------|
-| **Subject/Topic Routing** | ✅ Built-in | ⚠️ Topic-based | ⚠️ Routing keys |
-| **Wildcard Subscribe** | ✅ Native | ❌ No | ⚠️ Limited |
-| **Setup Complexity** | ✅ Simple | ❌ Complex | ⚠️ Medium |
-| **Performance** | ✅ High | ✅ High | ⚠️ Medium |
-| **Message Persistence** | ⚠️ JetStream | ✅ Built-in | ✅ Built-in |
-| **Lightweight** | ✅ Yes | ❌ No | ⚠️ Medium |
-
-## Best Practices
-
-1. **Use Subject Wildcards**: `keycloak.events.user.>` for flexible subscriptions
-2. **Filter at Keycloak Level**: Use `includedEventTypes` to reduce traffic
-3. **Monitor Metrics**: Check `totalFailed` for connection issues
-4. **Use TLS in Production**: Always enable `useTls=true` for production
-5. **Configure Reconnection**: Adjust `maxReconnects` and `reconnectWait` based on network
+## Comparison with Other Messaging Modules
+| 구분 | NATS | Kafka Listener | RabbitMQ Listener |
+|------|------|----------------|-------------------|
+| 메시징 패턴 | Subject (pub/sub) | Topic (log 기반) | Routing key / Queue |
+| 주 사용처 | 저지연 이벤트 fan-out, 경량 마이크로서비스 | 대용량 이벤트 스트리밍, 순차 처리 | 워크큐, 보장된 전달 |
+| 연결 관리 | 단일 커넥션, 자동 재연결 | Producer/Consumer 클라이언트 분리 | 채널 다중화 |
+| 모듈 설계 포인트 | subject 생성 로직, noEcho, 빠른 재시도 | 파티션/오프셋 관리, 배치 producer | Exchange 타입 선택, 큐 선언 |
+| 권장 소비자 | 실시간 알림, 세션 동기화, 경량 함수형 서비스 | 감사 로그, 데이터 파이프라인 | 백오피스 작업, 지연 허용 작업 |
 
 ## License
-
 Apache License 2.0
