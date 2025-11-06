@@ -14,6 +14,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         java-version: [17, 21]
@@ -51,6 +52,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: test
     
     steps:
@@ -86,6 +88,7 @@ jobs:
 
   code-quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     
     steps:
     - uses: actions/checkout@v4
