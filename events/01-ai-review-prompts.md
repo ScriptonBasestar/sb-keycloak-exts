@@ -2,6 +2,8 @@
 
 이 파일은 Claude AI와 함께 events 모듈 일관성을 검토하기 위한 **실제 사용 가능한 프롬프트**를 제공합니다.
 
+> **참고**: Phase별 검토 체크리스트와 함께 사용하려면 [`00-consistency-review-checklist.md`](./00-consistency-review-checklist.md) 참조
+
 ---
 
 ## 프롬프트 1: 전체 모듈 구조 비교 (초기 분석)

@@ -8,7 +8,7 @@
 │ Total Modules: 6 transports + 1 common library                                                          │
 │ Total Kotlin Files: 57 (41 main classes, 16 test classes)                                              │
 │ Total Lines of Analysis: 531                                                                            │
-│ Test Coverage: 52% of modules have tests (Kafka, NATS, RabbitMQ have tests; Azure, Redis, AWS don't)  │
+│ Test Coverage: 50% of transports (3/6: Kafka, NATS, RabbitMQ have tests; Azure, Redis, AWS don't)    │
 └─────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -51,8 +51,8 @@
 │    → IMPACT: Code inconsistency, harder to maintain                                                   │
 │    → RECOMMENDATION: Standardize to Constructor pattern (4 vs 2)                                       │
 │                                                                                                         │
-│ 2. PROMETHEUS PORT CONFLICTS                                                                           │
-│    • Kafka: 9090  | RabbitMQ: 9091 | NATS: 9092 | Redis: 9092 | AWS: 9093 | Azure: 9094             │
+│ 2. PROMETHEUS PORT CONFLICTS (see each module's README.md & docker-compose.yml)                       │
+│    • Current: Kafka: 9090 | RabbitMQ: 9091 | NATS: 9092 | Redis: 9092 | AWS: 9093 | Azure: 9094     │
 │    → CONFLICT: NATS and Redis both use 9092                                                            │
 │    → IMPACT: Running both together causes port conflict                                                │
 │    → RECOMMENDATION: Redis → 9093, AWS → 9094, Azure → 9095                                           │

@@ -1,7 +1,9 @@
 # Events Module 일관성 검토 프롬프트 및 체크리스트
 
 ## 개요
-`events/` 디렉토리의 7개 모듈(Kafka, Azure, NATS, RabbitMQ, Redis, AWS, Common)이 **구조적 일관성**을 유지하도록 검토하기 위한 체계적 프롬프트 및 체크리스트입니다.
+`events/` 디렉토리의 **6개 transport 모듈** + **1개 공통 라이브러리**(Kafka, Azure, NATS, RabbitMQ, Redis, AWS, Common)가 **구조적 일관성**을 유지하도록 검토하기 위한 체계적 프롬프트 및 체크리스트입니다.
+
+> **참고**: 상세하고 독립적인 AI 프롬프트는 [`01-ai-review-prompts.md`](./01-ai-review-prompts.md) 참조
 
 ---
 

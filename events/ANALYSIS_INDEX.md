@@ -62,7 +62,7 @@ Content includes:
 - **Modules analyzed**: 6 transport listeners + 1 common library
 - **Kotlin files**: 57 total (41 main, 16 test)
 - **Approximate total code**: 6,500+ lines
-- **Test coverage**: 52% (Kafka, NATS, RabbitMQ have tests; Azure, Redis, AWS don't)
+- **Test coverage**: 50% (3/6 transports: Kafka, NATS, RabbitMQ have tests; Azure, Redis, AWS don't)
 
 ### Top Inconsistencies Found
 1. **Config loading pattern**: Two different approaches (constructor vs. factory methods)
