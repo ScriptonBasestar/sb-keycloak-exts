@@ -4,10 +4,16 @@ import com.rabbitmq.client.Channel
 import com.rabbitmq.client.Connection
 import com.rabbitmq.client.ConnectionFactory
 import org.jboss.logging.Logger
+import org.scriptonbasestar.kcexts.events.common.connection.EventConnectionManager
 
+/**
+ * RabbitMQ implementation of EventConnectionManager.
+ *
+ * Manages RabbitMQ connection lifecycle and message publishing.
+ */
 class RabbitMQConnectionManager(
     private val config: RabbitMQEventListenerConfig,
-) {
+) : EventConnectionManager {
     private val logger = Logger.getLogger(RabbitMQConnectionManager::class.java)
 
     @Volatile
@@ -74,6 +80,30 @@ class RabbitMQConnectionManager(
         }
     }
 
+    /**
+     * Send message to RabbitMQ exchange with routing key.
+     *
+     * @param destination Routing key for message routing
+     * @param message Message content (JSON string)
+     * @return true if successfully sent, false on error
+     */
+    override fun send(
+        destination: String,
+        message: String,
+    ): Boolean {
+        return try {
+            publishMessage(destination, message)
+            true
+        } catch (e: Exception) {
+            logger.error("Failed to send message to RabbitMQ with routing key '$destination'", e)
+            false
+        }
+    }
+
+    /**
+     * Publish message to RabbitMQ (legacy method for backward compatibility).
+     * Prefer using send() for standard interface.
+     */
     fun publishMessage(
         routingKey: String,
         message: String,
@@ -105,7 +135,7 @@ class RabbitMQConnectionManager(
     }
 
     @Synchronized
-    fun close() {
+    override fun close() {
         try {
             channel?.let {
                 if (it.isOpen) {
@@ -127,5 +157,5 @@ class RabbitMQConnectionManager(
         }
     }
 
-    fun isConnected(): Boolean = connection?.isOpen == true && channel?.isOpen == true
+    override fun isConnected(): Boolean = connection?.isOpen == true && channel?.isOpen == true
 }

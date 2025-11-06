@@ -4,14 +4,18 @@ import io.nats.client.Connection
 import io.nats.client.Nats
 import io.nats.client.Options
 import org.jboss.logging.Logger
+import org.scriptonbasestar.kcexts.events.common.connection.ConnectionException
+import org.scriptonbasestar.kcexts.events.common.connection.EventConnectionManager
 import java.time.Duration
 
 /**
- * Manages NATS connection lifecycle and publishing
+ * NATS implementation of EventConnectionManager.
+ *
+ * Manages NATS connection lifecycle and message publishing.
  */
 class NatsConnectionManager(
     private val config: NatsEventListenerConfig,
-) {
+) : EventConnectionManager {
     private val logger = Logger.getLogger(NatsConnectionManager::class.java)
 
     @Volatile
@@ -53,7 +57,29 @@ class NatsConnectionManager(
     }
 
     /**
-     * Publish a message to a subject
+     * Send message to specified NATS subject.
+     *
+     * @param destination NATS subject name
+     * @param message Message content (JSON string)
+     * @return true if successfully sent, false on error
+     * @throws ConnectionException if connection is not active
+     */
+    override fun send(
+        destination: String,
+        message: String,
+    ): Boolean {
+        return try {
+            publish(destination, message)
+            true
+        } catch (e: Exception) {
+            logger.error("Failed to send message to NATS subject '$destination'", e)
+            false
+        }
+    }
+
+    /**
+     * Publish a message to a subject (legacy method for backward compatibility).
+     * Prefer using send() for standard interface.
      */
     fun publish(
         subject: String,
@@ -78,7 +104,7 @@ class NatsConnectionManager(
     /**
      * Close the NATS connection
      */
-    fun close() {
+    override fun close() {
         try {
             connection?.close()
             logger.info("NATS connection closed")
@@ -92,5 +118,5 @@ class NatsConnectionManager(
     /**
      * Check if connected
      */
-    fun isConnected(): Boolean = connection?.status == Connection.Status.CONNECTED
+    override fun isConnected(): Boolean = connection?.status == Connection.Status.CONNECTED
 }
