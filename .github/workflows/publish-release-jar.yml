@@ -5,6 +5,11 @@ on:
     tags:
       - '*.*.*'
 
+# 동일 태그에서 재실행 방지 (일반적으로 태그는 한 번만 실행)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest

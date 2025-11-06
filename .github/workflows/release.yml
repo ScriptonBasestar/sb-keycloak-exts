@@ -22,6 +22,11 @@ on:
         default: true
         type: boolean
 
+# 동일 태그/릴리즈에서 재실행 방지
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/keycloak-kafka-event-listener
