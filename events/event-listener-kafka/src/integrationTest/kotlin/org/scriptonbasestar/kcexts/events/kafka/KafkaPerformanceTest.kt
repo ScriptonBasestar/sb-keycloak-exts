@@ -28,16 +28,8 @@ class KafkaPerformanceTest : BaseIntegrationTest() {
         @BeforeAll
         fun setupPerformanceTest() {
             logger.info("Starting performance test setup...")
-            kafkaContainer.start()
+            // TestContainers가 자동으로 컨테이너를 시작합니다
             logger.info("Performance test setup completed")
-        }
-
-        @JvmStatic
-        @AfterAll
-        fun teardownPerformanceTest() {
-            logger.info("Cleaning up performance test...")
-            kafkaContainer.stop()
-            logger.info("Performance test cleanup completed")
         }
     }
 

@@ -32,33 +32,21 @@ class KafkaEventListenerIntegrationTest : BaseIntegrationTest() {
         fun setupIntegrationTest() {
             logger.info("Starting integration test setup...")
 
-            // Kafka 먼저 시작
-            kafkaContainer.start()
-
-            // Keycloak 시작 및 Kafka 설정 업데이트
-            keycloakContainer.start()
-            keycloakContainer.updateKafkaConfiguration(kafkaContainer.getBootstrapServers())
+            // TestContainers가 자동으로 컨테이너를 시작합니다
+            // Keycloak의 Kafka 설정 업데이트
+            keycloakContainer.updateKafkaConfiguration(kafkaContainer.bootstrapServers)
 
             logger.info("Integration test setup completed")
-        }
-
-        @JvmStatic
-        @AfterAll
-        fun teardownIntegrationTest() {
-            logger.info("Cleaning up integration test...")
-            keycloakContainer.stop()
-            kafkaContainer.stop()
-            logger.info("Integration test cleanup completed")
         }
     }
 
     @Test
     @Order(1)
     fun `should verify containers are running`() {
-        assertTrue(kafkaContainer.container.isRunning, "Kafka container should be running")
-        assertTrue(keycloakContainer.container.isRunning, "Keycloak container should be running")
+        assertTrue(kafkaContainer.isRunning, "Kafka container should be running")
+        assertTrue(keycloakContainer.isRunning, "Keycloak container should be running")
 
-        logger.info("Kafka Bootstrap Servers: ${kafkaContainer.getBootstrapServers()}")
+        logger.info("Kafka Bootstrap Servers: ${kafkaContainer.bootstrapServers}")
         logger.info("Keycloak Auth Server URL: ${keycloakContainer.getAuthServerUrl()}")
     }
 
@@ -161,7 +149,7 @@ class KafkaEventListenerIntegrationTest : BaseIntegrationTest() {
         val attributes = realm.attributes
         kotlin.test.assertNotNull(attributes, "Realm should have attributes")
         assertEquals(
-            kafkaContainer.getBootstrapServers(),
+            kafkaContainer.bootstrapServers,
             attributes["kafka.bootstrap.servers"],
             "Bootstrap servers should match",
         )

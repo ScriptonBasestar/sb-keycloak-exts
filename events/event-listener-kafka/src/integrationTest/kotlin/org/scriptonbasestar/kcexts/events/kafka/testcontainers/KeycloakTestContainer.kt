@@ -9,7 +9,7 @@ import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.utility.DockerImageName
 import java.time.Duration
 
-class KeycloakTestContainer {
+class KeycloakTestContainer : GenericContainer<KeycloakTestContainer>(DockerImageName.parse(KEYCLOAK_IMAGE)) {
     private val logger = LoggerFactory.getLogger(KeycloakTestContainer::class.java)
 
     companion object {
@@ -24,38 +24,36 @@ class KeycloakTestContainer {
         const val TEST_PASSWORD = "testpass"
     }
 
-    val container: GenericContainer<*> =
-        GenericContainer(DockerImageName.parse(KEYCLOAK_IMAGE))
-            .withExposedPorts(HTTP_PORT)
-            .withEnv("KEYCLOAK_ADMIN", ADMIN_USERNAME)
-            .withEnv("KEYCLOAK_ADMIN_PASSWORD", ADMIN_PASSWORD)
-            .withEnv("KC_BOOTSTRAP_ADMIN_USERNAME", ADMIN_USERNAME)
-            .withEnv("KC_BOOTSTRAP_ADMIN_PASSWORD", ADMIN_PASSWORD)
-            .withCommand("start-dev")
-            .waitingFor(Wait.forHttp("/realms/master").withStartupTimeout(Duration.ofMinutes(3)))
-            .withReuse(true)
+    init {
+        withExposedPorts(HTTP_PORT)
+        withEnv("KEYCLOAK_ADMIN", ADMIN_USERNAME)
+        withEnv("KEYCLOAK_ADMIN_PASSWORD", ADMIN_PASSWORD)
+        withEnv("KC_BOOTSTRAP_ADMIN_USERNAME", ADMIN_USERNAME)
+        withEnv("KC_BOOTSTRAP_ADMIN_PASSWORD", ADMIN_PASSWORD)
+        withCommand("start-dev")
+        waitingFor(Wait.forHttp("/realms/master").withStartupTimeout(Duration.ofMinutes(3)))
+        withReuse(true)
+    }
+
+    val container: GenericContainer<*> get() = this
 
     private var keycloakAdmin: Keycloak? = null
 
-    fun start() {
-        if (!container.isRunning) {
-            logger.info("Starting Keycloak TestContainer...")
-            container.start()
-            logger.info("Keycloak TestContainer started on: ${getAuthServerUrl()}")
-
-            setupKeycloakAdmin()
-            setupTestRealm()
-        }
+    override fun start() {
+        super.start()
+        logger.info("Keycloak TestContainer started on: ${getAuthServerUrl()}")
+        setupKeycloakAdmin()
+        setupTestRealm()
     }
 
-    fun stop() {
+    override fun stop() {
         logger.info("Stopping Keycloak TestContainer...")
         keycloakAdmin?.close()
-        container.stop()
+        super.stop()
         logger.info("Keycloak TestContainer stopped")
     }
 
-    fun getAuthServerUrl(): String = "http://${container.host}:${container.getMappedPort(HTTP_PORT)}"
+    fun getAuthServerUrl(): String = "http://$host:${getMappedPort(HTTP_PORT)}"
 
     fun getRealmUrl(): String = "${getAuthServerUrl()}/realms/$TEST_REALM"
 

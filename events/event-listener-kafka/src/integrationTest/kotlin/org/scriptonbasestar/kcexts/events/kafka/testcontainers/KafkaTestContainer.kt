@@ -15,7 +15,8 @@ import org.testcontainers.utility.DockerImageName
 import java.time.Duration
 import java.util.*
 
-class KafkaTestContainer {
+class KafkaTestContainer :
+    KafkaContainer(DockerImageName.parse(KAFKA_IMAGE).asCompatibleSubstituteFor("confluentinc/cp-kafka")) {
     private val logger = LoggerFactory.getLogger(KafkaTestContainer::class.java)
 
     companion object {
@@ -24,31 +25,28 @@ class KafkaTestContainer {
         const val ADMIN_EVENTS_TOPIC = "test.keycloak.admin.events"
     }
 
-    val container: KafkaContainer =
-        KafkaContainer(DockerImageName.parse(KAFKA_IMAGE))
-            .withKraft()
-            .withReuse(true)
+    init {
+        withReuse(true)
+    }
+
+    val container: KafkaContainer get() = this
 
     private var adminClient: AdminClient? = null
 
-    fun start() {
-        if (!container.isRunning) {
-            logger.info("Starting Kafka TestContainer...")
-            container.start()
-            logger.info("Kafka TestContainer started on: ${container.bootstrapServers}")
-
-            setupTopics()
-        }
+    override fun start() {
+        super.start()
+        logger.info("Kafka TestContainer started on: $bootstrapServers")
+        setupTopics()
     }
 
-    fun stop() {
+    override fun stop() {
         logger.info("Stopping Kafka TestContainer...")
         adminClient?.close()
-        container.stop()
+        super.stop()
         logger.info("Kafka TestContainer stopped")
     }
 
-    fun getBootstrapServers(): String = container.bootstrapServers
+    // bootstrapServers 속성은 이미 KafkaContainer에서 제공됨
 
     private fun setupTopics() {
         logger.info("Setting up Kafka topics...")
@@ -56,7 +54,7 @@ class KafkaTestContainer {
         adminClient =
             AdminClient.create(
                 mapOf(
-                    AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG to container.bootstrapServers,
+                    AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
                 ),
             )
 
@@ -77,7 +75,7 @@ class KafkaTestContainer {
     fun createProducer(): KafkaProducer<String, String> {
         val props =
             Properties().apply {
-                put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, container.bootstrapServers)
+                put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
                 put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
                 put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
                 put(ProducerConfig.ACKS_CONFIG, "all")
@@ -89,7 +87,7 @@ class KafkaTestContainer {
     fun createConsumer(groupId: String = "test-group"): KafkaConsumer<String, String> {
         val props =
             Properties().apply {
-                put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, container.bootstrapServers)
+                put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
                 put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
                 put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
                 put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
