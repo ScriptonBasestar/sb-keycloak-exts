@@ -18,7 +18,6 @@ import org.scriptonbasestar.kcexts.events.common.resilience.RetryExhaustedExcept
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryPolicy
 import org.scriptonbasestar.kcexts.events.redis.config.RedisEventListenerConfig
 import org.scriptonbasestar.kcexts.events.redis.metrics.RedisEventMetrics
-import org.scriptonbasestar.kcexts.events.redis.producer.RedisStreamProducer
 import java.util.*
 
 /**
@@ -27,7 +26,7 @@ import java.util.*
 class RedisEventListenerProvider(
     private val session: KeycloakSession,
     private val config: RedisEventListenerConfig,
-    private val streamProducer: RedisStreamProducer,
+    private val connectionManager: RedisConnectionManager,
     private val metrics: RedisEventMetrics,
     private val circuitBreaker: CircuitBreaker,
     private val retryPolicy: RetryPolicy,
@@ -230,7 +229,7 @@ class RedisEventListenerProvider(
             circuitBreaker.execute {
                 retryPolicy.execute(
                     operation = {
-                        streamProducer.sendEvent(streamKey, fields)
+                        connectionManager.sendEvent(streamKey, fields)
                     },
                     onRetry = { attempt, exception, delay ->
                         logger.warn(

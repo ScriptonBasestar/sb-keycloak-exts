@@ -13,7 +13,6 @@ import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreaker
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryPolicy
 import org.scriptonbasestar.kcexts.events.redis.config.RedisEventListenerConfig
 import org.scriptonbasestar.kcexts.events.redis.metrics.RedisEventMetrics
-import org.scriptonbasestar.kcexts.events.redis.producer.RedisStreamProducer
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
@@ -22,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class RedisEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(RedisEventListenerProviderFactory::class.java)
-    private val streamProducers = ConcurrentHashMap<String, RedisStreamProducer>()
+    private val connectionManagers = ConcurrentHashMap<String, RedisConnectionManager>()
 
     private var initConfigScope: Config.Scope? = null
     private var metricsExporter: PrometheusMetricsExporter? = null
@@ -35,11 +34,11 @@ class RedisEventListenerProviderFactory : EventListenerProviderFactory {
     override fun create(session: KeycloakSession): EventListenerProvider =
         try {
             val config = RedisEventListenerConfig(session, initConfigScope)
-            val streamProducer = getOrCreateStreamProducer(config)
+            val connectionManager = getOrCreateConnectionManager(config)
             RedisEventListenerProvider(
                 session,
                 config,
-                streamProducer,
+                connectionManager,
                 metrics,
                 circuitBreaker,
                 retryPolicy,
@@ -51,11 +50,11 @@ class RedisEventListenerProviderFactory : EventListenerProviderFactory {
             throw e
         }
 
-    private fun getOrCreateStreamProducer(config: RedisEventListenerConfig): RedisStreamProducer {
+    private fun getOrCreateConnectionManager(config: RedisEventListenerConfig): RedisConnectionManager {
         val key = config.redisUri
-        return streamProducers.computeIfAbsent(key) {
-            logger.info("Creating new RedisStreamProducer for URI: $key")
-            RedisStreamProducer(config)
+        return connectionManagers.computeIfAbsent(key) {
+            logger.info("Creating new RedisConnectionManager for URI: $key")
+            RedisConnectionManager(config)
         }
     }
 
@@ -157,7 +156,7 @@ class RedisEventListenerProviderFactory : EventListenerProviderFactory {
                 flushInterval = Duration.ofMillis(batchFlushInterval),
                 processBatch = { batch ->
                     batch.forEach { message ->
-                        streamProducers.values.firstOrNull()?.sendEvent(message.streamKey, message.fields)
+                        connectionManagers.values.firstOrNull()?.sendEvent(message.streamKey, message.fields)
                     }
                 },
                 onError = { batch, exception ->
@@ -198,14 +197,14 @@ class RedisEventListenerProviderFactory : EventListenerProviderFactory {
             logger.info("Batch processor stopped")
         }
 
-        streamProducers.values.forEach { producer ->
+        connectionManagers.values.forEach { manager ->
             try {
-                producer.close()
+                manager.close()
             } catch (e: Exception) {
-                logger.error("Error closing RedisStreamProducer", e)
+                logger.error("Error closing RedisConnectionManager", e)
             }
         }
-        streamProducers.clear()
+        connectionManagers.clear()
 
         // Stop Prometheus exporter
         metricsExporter?.stop()
