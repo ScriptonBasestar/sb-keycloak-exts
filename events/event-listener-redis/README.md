@@ -59,7 +59,7 @@ Redis Streams 기반 Keycloak 이벤트 리스너 구현체입니다.
 
             <!-- Prometheus Metrics -->
             <property name="enablePrometheus" value="true"/>
-            <property name="prometheusPort" value="9092"/>
+            <property name="prometheusPort" value="9096"/>
             <property name="enableJvmMetrics" value="true"/>
         </properties>
     </provider>

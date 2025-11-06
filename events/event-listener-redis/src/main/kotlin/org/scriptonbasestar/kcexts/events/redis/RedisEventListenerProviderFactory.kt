@@ -73,7 +73,7 @@ class RedisEventListenerProviderFactory : EventListenerProviderFactory {
 
         // Initialize Prometheus metrics exporter if enabled
         val enablePrometheus = config.getBoolean("enablePrometheus", false)
-        val prometheusPort = config.getInt("prometheusPort", 9092)
+        val prometheusPort = config.getInt("prometheusPort", 9096)
         val enableJvmMetrics = config.getBoolean("enableJvmMetrics", true)
 
         if (enablePrometheus) {

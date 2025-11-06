@@ -159,7 +159,7 @@ Keycloak 이벤트를 NATS subject 기반 메시징으로 전달하는 모듈입
 | Property | Default | Description |
 |----------|---------|-------------|
 | `enablePrometheus` | `false` | 내장 Prometheus HTTP exporter |
-| `prometheusPort` | `9092` | exporter 바인딩 포트 |
+| `prometheusPort` | `9095` | exporter 바인딩 포트 |
 | `enableJvmMetrics` | `true` | JVM 메트릭 포함 여부 |
 
 ## Metrics & Monitoring
