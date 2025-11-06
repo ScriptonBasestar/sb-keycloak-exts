@@ -74,15 +74,16 @@
   예: KafkaEventMessage vs AzureEventMessage
   패턴: {Transport}EventMessage ✓
 
-□ Manager/Producer/Sender 클래스명 (불일치 주의!)
-  - Kafka: KafkaProducerManager ❌ (다른 패턴)
-  - Azure: AzureServiceBusSender ❌ (다른 패턴)
-  - NATS: NatsConnectionManager ❌ (다른 패턴)
-  - RabbitMQ: RabbitMQConnectionManager
-  - Redis: RedisConnectionManager
-  - AWS: AwsEventPublisher
+☑ Manager/Producer/Sender 클래스명 (✅ 2025-01-06 표준화 완료!)
+  - Kafka: KafkaConnectionManager ✅ (EventConnectionManager 구현)
+  - Azure: AzureConnectionManager ✅ (EventConnectionManager 구현)
+  - NATS: NatsConnectionManager ✅ (EventConnectionManager 구현)
+  - RabbitMQ: RabbitMQConnectionManager ✅ (EventConnectionManager 구현)
+  - Redis: RedisConnectionManager ✅ (EventConnectionManager 구현)
+  - AWS: AwsConnectionManager ✅ (EventConnectionManager 구현)
 
-  ⚠️ 표준화 필요: {Transport}ConnectionManager or {Transport}MessageSender
+  ✅ 표준 패턴: {Transport}ConnectionManager implements EventConnectionManager
+  ✅ 레거시 파일 정리: AzureServiceBusSender, RedisStreamProducer 삭제 완료
 
 □ Metrics 클래스명
   패턴: {Transport}EventMetrics ✓
