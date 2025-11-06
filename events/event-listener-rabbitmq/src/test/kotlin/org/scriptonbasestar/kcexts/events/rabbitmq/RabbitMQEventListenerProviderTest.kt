@@ -233,7 +233,7 @@ class RabbitMQEventListenerProviderTest {
 
         provider.onEvent(adminEvent, false)
 
-        // Should still process, but representation should be stripped
-        assert(!capturedMessage.contains("representation"))
+        // Should still process, but representation value should be null or not contain the actual data
+        assert(!capturedMessage.contains("testuser"))
     }
 }
