@@ -37,6 +37,7 @@ dependencies {
     testImplementation libs.bundles.testing
     testImplementation libs.testcontainers.rabbitmq
     testImplementation libs.testcontainers.junit
+    testImplementation project(':events:event-listener-common')  // Common test utilities
 
     // Integration Test Dependencies
     integrationTestImplementation libs.bundles.testcontainers
