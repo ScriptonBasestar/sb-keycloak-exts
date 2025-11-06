@@ -8,7 +8,6 @@ import org.keycloak.models.KeycloakSession
 import org.keycloak.models.KeycloakSessionFactory
 import org.scriptonbasestar.kcexts.events.azure.config.AzureEventListenerConfig
 import org.scriptonbasestar.kcexts.events.azure.metrics.AzureEventMetrics
-import org.scriptonbasestar.kcexts.events.azure.sender.AzureServiceBusSender
 import org.scriptonbasestar.kcexts.events.common.batch.BatchProcessor
 import org.scriptonbasestar.kcexts.events.common.dlq.DeadLetterQueue
 import org.scriptonbasestar.kcexts.events.common.metrics.PrometheusMetricsExporter
@@ -22,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class AzureEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(AzureEventListenerProviderFactory::class.java)
-    private val serviceBusSenders = ConcurrentHashMap<String, AzureServiceBusSender>()
+    private val connectionManagers = ConcurrentHashMap<String, AzureConnectionManager>()
 
     private var initConfigScope: Config.Scope? = null
     private var metricsExporter: PrometheusMetricsExporter? = null
@@ -35,13 +34,13 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
     override fun create(session: KeycloakSession): EventListenerProvider =
         try {
             val config = AzureEventListenerConfig(session, initConfigScope)
-            val senderKey = buildSenderKey(config)
-            val sender = getOrCreateSender(senderKey, config)
+            val connectionKey = buildConnectionKey(config)
+            val connectionManager = getOrCreateConnectionManager(connectionKey, config)
             AzureEventListenerProvider(
                 session = session,
                 config = config,
-                sender = sender,
-                senderKey = senderKey,
+                sender = connectionManager,
+                senderKey = connectionKey,
                 metrics = metrics,
                 circuitBreaker = circuitBreaker,
                 retryPolicy = retryPolicy,
@@ -53,13 +52,13 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
             throw e
         }
 
-    private fun getOrCreateSender(
-        senderKey: String,
+    private fun getOrCreateConnectionManager(
+        connectionKey: String,
         config: AzureEventListenerConfig,
-    ): AzureServiceBusSender {
-        return serviceBusSenders.computeIfAbsent(senderKey) {
-            logger.info("Creating new AzureServiceBusSender for key: $senderKey")
-            AzureServiceBusSender(config)
+    ): AzureConnectionManager {
+        return connectionManagers.computeIfAbsent(connectionKey) {
+            logger.info("Creating new AzureConnectionManager for key: $connectionKey")
+            AzureConnectionManager(config)
         }
     }
 
@@ -124,13 +123,13 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
                 processBatch = { batch ->
                     batch
                         .groupBy { it.senderKey }
-                        .forEach { (senderKey, messages) ->
-                            val sender = serviceBusSenders[senderKey]
-                            if (sender == null) {
-                                logger.error("No AzureServiceBusSender found for key: $senderKey")
+                        .forEach { (connectionKey, messages) ->
+                            val connectionManager = connectionManagers[connectionKey]
+                            if (connectionManager == null) {
+                                logger.error("No AzureConnectionManager found for key: $connectionKey")
                                 metrics.updateConnectionStatus(false)
                                 messages.forEach { message ->
-                                    addToDeadLetterQueue(message, IllegalStateException("Missing sender for batch"))
+                                    addToDeadLetterQueue(message, IllegalStateException("Missing connection manager for batch"))
                                 }
                                 return@forEach
                             }
@@ -139,14 +138,14 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
                                 try {
                                     when {
                                         message.queueName != null ->
-                                            sender.sendToQueue(
+                                            connectionManager.sendToQueue(
                                                 message.queueName,
                                                 message.messageBody,
                                                 message.properties,
                                             )
 
                                         message.topicName != null ->
-                                            sender.sendToTopic(
+                                            connectionManager.sendToTopic(
                                                 message.topicName,
                                                 message.messageBody,
                                                 message.properties,
@@ -158,7 +157,7 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
                                     logger.error("Failed to send batched message: ${message.meta.eventType}", e)
                                     addToDeadLetterQueue(message, e)
                                 } finally {
-                                    metrics.updateConnectionStatus(sender.isHealthy())
+                                    metrics.updateConnectionStatus(connectionManager.isConnected())
                                 }
                             }
                         }
@@ -194,14 +193,14 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
             batchProcessor.stop()
         }
 
-        serviceBusSenders.values.forEach { sender ->
+        connectionManagers.values.forEach { manager ->
             try {
-                sender.close()
+                manager.close()
             } catch (e: Exception) {
-                logger.error("Error closing AzureServiceBusSender", e)
+                logger.error("Error closing AzureConnectionManager", e)
             }
         }
-        serviceBusSenders.clear()
+        connectionManagers.clear()
 
         metricsExporter?.stop()
 
@@ -210,7 +209,7 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
 
     override fun getId(): String = "azure-event-listener"
 
-    private fun buildSenderKey(config: AzureEventListenerConfig): String =
+    private fun buildConnectionKey(config: AzureEventListenerConfig): String =
         if (config.useManagedIdentity) {
             "managed:${config.fullyQualifiedNamespace}:${config.managedIdentityClientId ?: ""}"
         } else {

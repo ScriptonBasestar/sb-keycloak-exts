@@ -8,7 +8,6 @@ import org.keycloak.events.admin.AdminEvent
 import org.keycloak.models.KeycloakSession
 import org.scriptonbasestar.kcexts.events.azure.config.AzureEventListenerConfig
 import org.scriptonbasestar.kcexts.events.azure.metrics.AzureEventMetrics
-import org.scriptonbasestar.kcexts.events.azure.sender.AzureServiceBusSender
 import org.scriptonbasestar.kcexts.events.common.batch.BatchProcessor
 import org.scriptonbasestar.kcexts.events.common.dlq.DeadLetterQueue
 import org.scriptonbasestar.kcexts.events.common.model.AuthDetails
@@ -27,7 +26,7 @@ import java.util.UUID
 class AzureEventListenerProvider(
     private val session: KeycloakSession,
     private val config: AzureEventListenerConfig,
-    private val sender: AzureServiceBusSender,
+    private val sender: AzureConnectionManager,
     private val senderKey: String,
     private val metrics: AzureEventMetrics,
     private val circuitBreaker: CircuitBreaker,
@@ -238,7 +237,7 @@ class AzureEventListenerProvider(
                     destination = formatDestination(message),
                     sizeBytes = payloadSize,
                 )
-                metrics.updateConnectionStatus(sender.isHealthy())
+                metrics.updateConnectionStatus(sender.isConnected())
             } catch (e: RetryExhaustedException) {
                 addToDeadLetterQueue(message, e)
                 if (primaryException == null) {
@@ -307,7 +306,7 @@ class AzureEventListenerProvider(
                 },
             errorType = exception.javaClass.simpleName,
         )
-        metrics.updateConnectionStatus(sender.isHealthy())
+        metrics.updateConnectionStatus(sender.isConnected())
     }
 
     private fun recordFailure(
@@ -336,7 +335,7 @@ class AzureEventListenerProvider(
             destination = destination,
             errorType = exception.javaClass.simpleName,
         )
-        metrics.updateConnectionStatus(sender.isHealthy())
+        metrics.updateConnectionStatus(sender.isConnected())
     }
 
     private fun formatDestination(message: AzureEventMessage): String =
