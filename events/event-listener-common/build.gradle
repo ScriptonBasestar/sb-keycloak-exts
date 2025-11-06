@@ -18,6 +18,9 @@ dependencies {
     implementation libs.prometheus.hotspot
     implementation libs.prometheus.httpserver
 
+    // Testing utilities (exported to dependent modules)
+    api libs.bundles.testing  // Make test utilities available to other modules
+
     // Testing
     testImplementation libs.bundles.testing
 }
