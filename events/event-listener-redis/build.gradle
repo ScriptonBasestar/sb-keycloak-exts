@@ -36,6 +36,7 @@ dependencies {
     // Test Dependencies
     testImplementation libs.bundles.testing
     testImplementation libs.testcontainers.junit
+    testImplementation project(':events:event-listener-common')  // Common test utilities
 
     // Integration Test Dependencies
     testImplementation 'com.redis.testcontainers:testcontainers-redis:1.6.4'
