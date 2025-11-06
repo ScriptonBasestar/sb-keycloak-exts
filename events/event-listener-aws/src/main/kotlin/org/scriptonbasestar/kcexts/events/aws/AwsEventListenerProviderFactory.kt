@@ -8,7 +8,6 @@ import org.keycloak.models.KeycloakSession
 import org.keycloak.models.KeycloakSessionFactory
 import org.scriptonbasestar.kcexts.events.aws.config.AwsEventListenerConfig
 import org.scriptonbasestar.kcexts.events.aws.metrics.AwsEventMetrics
-import org.scriptonbasestar.kcexts.events.aws.publisher.AwsMessagePublisher
 import org.scriptonbasestar.kcexts.events.common.batch.BatchProcessor
 import org.scriptonbasestar.kcexts.events.common.dlq.DeadLetterQueue
 import org.scriptonbasestar.kcexts.events.common.metrics.PrometheusMetricsExporter
@@ -22,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class AwsEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(AwsEventListenerProviderFactory::class.java)
-    private val messagePublishers = ConcurrentHashMap<String, AwsMessagePublisher>()
+    private val connectionManagers = ConcurrentHashMap<String, AwsConnectionManager>()
 
     private var initConfigScope: Config.Scope? = null
     private var metricsExporter: PrometheusMetricsExporter? = null
@@ -35,11 +34,11 @@ class AwsEventListenerProviderFactory : EventListenerProviderFactory {
     override fun create(session: KeycloakSession): EventListenerProvider =
         try {
             val config = AwsEventListenerConfig(session, initConfigScope)
-            val publisher = getOrCreateMessagePublisher(config)
+            val connectionManager = getOrCreateConnectionManager(config)
             AwsEventListenerProvider(
                 session,
                 config,
-                publisher,
+                connectionManager,
                 metrics,
                 circuitBreaker,
                 retryPolicy,
@@ -51,11 +50,11 @@ class AwsEventListenerProviderFactory : EventListenerProviderFactory {
             throw e
         }
 
-    private fun getOrCreateMessagePublisher(config: AwsEventListenerConfig): AwsMessagePublisher {
+    private fun getOrCreateConnectionManager(config: AwsEventListenerConfig): AwsConnectionManager {
         val key = "${config.awsRegion}:${config.useSqs}:${config.useSns}"
-        return messagePublishers.computeIfAbsent(key) {
-            logger.info("Creating new AwsMessagePublisher for region: ${config.awsRegion}")
-            AwsMessagePublisher(config)
+        return connectionManagers.computeIfAbsent(key) {
+            logger.info("Creating new AwsConnectionManager for region: ${config.awsRegion}")
+            AwsConnectionManager(config)
         }
     }
 
@@ -116,11 +115,11 @@ class AwsEventListenerProviderFactory : EventListenerProviderFactory {
                 flushInterval = Duration.ofMillis(config.getLong("batchFlushIntervalMs", 5000)),
                 processBatch = { batch ->
                     batch.forEach { message ->
-                        messagePublishers.values.firstOrNull()?.let { publisher ->
+                        connectionManagers.values.firstOrNull()?.let { connectionManager ->
                             if (message.queueUrl != null) {
-                                publisher.sendToSqs(message.queueUrl, message.messageBody, message.messageAttributes)
+                                connectionManager.sendToSqs(message.queueUrl, message.messageBody, message.messageAttributes)
                             } else if (message.topicArn != null) {
-                                publisher.sendToSns(message.topicArn, message.messageBody, message.messageAttributes)
+                                connectionManager.sendToSns(message.topicArn, message.messageBody, message.messageAttributes)
                             }
                         }
                     }
@@ -149,8 +148,14 @@ class AwsEventListenerProviderFactory : EventListenerProviderFactory {
             batchProcessor.stop()
         }
 
-        messagePublishers.values.forEach { it.close() }
-        messagePublishers.clear()
+        connectionManagers.values.forEach { manager ->
+            try {
+                manager.close()
+            } catch (e: Exception) {
+                logger.error("Error closing AwsConnectionManager", e)
+            }
+        }
+        connectionManagers.clear()
 
         metricsExporter?.stop()
         logger.info("AwsEventListenerProviderFactory closed successfully")

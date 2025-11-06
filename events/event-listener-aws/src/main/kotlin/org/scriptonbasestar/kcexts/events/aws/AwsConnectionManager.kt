@@ -1,7 +1,9 @@
-package org.scriptonbasestar.kcexts.events.aws.publisher
+package org.scriptonbasestar.kcexts.events.aws
 
 import org.jboss.logging.Logger
 import org.scriptonbasestar.kcexts.events.aws.config.AwsEventListenerConfig
+import org.scriptonbasestar.kcexts.events.common.connection.ConnectionException
+import org.scriptonbasestar.kcexts.events.common.connection.EventConnectionManager
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider
@@ -16,12 +18,14 @@ import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * AWS SQS/SNS message publisher for Keycloak events
+ * AWS SQS/SNS implementation of EventConnectionManager.
+ *
+ * Manages AWS client lifecycle and message sending to SQS queues and SNS topics.
  */
-class AwsMessagePublisher(
+class AwsConnectionManager(
     private val config: AwsEventListenerConfig,
-) {
-    private val logger = Logger.getLogger(AwsMessagePublisher::class.java)
+) : EventConnectionManager {
+    private val logger = Logger.getLogger(AwsConnectionManager::class.java)
     private val closed = AtomicBoolean(false)
 
     private val sqsClient: SqsClient?
@@ -78,7 +82,49 @@ class AwsMessagePublisher(
     }
 
     /**
-     * Send message to SQS queue
+     * Send message to specified AWS destination.
+     *
+     * @param destination SQS queue URL or SNS topic ARN (format: "sqs:url" or "sns:arn")
+     * @param message JSON-serialized event message
+     * @return true if successfully sent, false on error
+     * @throws ConnectionException if connection is closed
+     */
+    override fun send(
+        destination: String,
+        message: String,
+    ): Boolean {
+        if (closed.get()) {
+            throw ConnectionException("AWS connection is closed, cannot send message")
+        }
+
+        return try {
+            // Parse destination format: "sqs:url" or "sns:arn"
+            when {
+                destination.startsWith("sqs:") -> {
+                    val queueUrl = destination.removePrefix("sqs:")
+                    sendToSqs(queueUrl, message, emptyMap())
+                    true
+                }
+                destination.startsWith("sns:") -> {
+                    val topicArn = destination.removePrefix("sns:")
+                    sendToSns(topicArn, message, emptyMap())
+                    true
+                }
+                else -> {
+                    // Default: treat as SQS queue URL
+                    sendToSqs(destination, message, emptyMap())
+                    true
+                }
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to send message to AWS destination '$destination'", e)
+            false
+        }
+    }
+
+    /**
+     * Legacy method for backward compatibility - send message to SQS queue.
+     * Prefer using send() directly.
      */
     fun sendToSqs(
         queueUrl: String,
@@ -118,7 +164,8 @@ class AwsMessagePublisher(
     }
 
     /**
-     * Send message to SNS topic
+     * Legacy method for backward compatibility - send message to SNS topic.
+     * Prefer using send() directly.
      */
     fun sendToSns(
         topicArn: String,
@@ -195,28 +242,22 @@ class AwsMessagePublisher(
         }
     }
 
-    /**
-     * Check if publisher is healthy
-     */
-    fun isHealthy(): Boolean {
+    override fun isConnected(): Boolean {
         return try {
             !closed.get() &&
                 ((sqsClient != null && config.useSqs) || (snsClient != null && config.useSns))
         } catch (e: Exception) {
-            logger.warn("Health check failed", e)
+            logger.warn("Connection check failed", e)
             false
         }
     }
 
-    /**
-     * Close AWS clients
-     */
-    fun close() {
+    override fun close() {
         if (closed.compareAndSet(false, true)) {
             try {
                 sqsClient?.close()
                 snsClient?.close()
-                logger.info("AWS clients closed successfully")
+                logger.info("AWS connection manager closed successfully")
             } catch (e: Exception) {
                 logger.error("Error closing AWS clients", e)
             }

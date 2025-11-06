@@ -8,7 +8,6 @@ import org.keycloak.events.admin.AdminEvent
 import org.keycloak.models.KeycloakSession
 import org.scriptonbasestar.kcexts.events.aws.config.AwsEventListenerConfig
 import org.scriptonbasestar.kcexts.events.aws.metrics.AwsEventMetrics
-import org.scriptonbasestar.kcexts.events.aws.publisher.AwsMessagePublisher
 import org.scriptonbasestar.kcexts.events.common.batch.BatchProcessor
 import org.scriptonbasestar.kcexts.events.common.dlq.DeadLetterQueue
 import org.scriptonbasestar.kcexts.events.common.model.AuthDetails
@@ -27,7 +26,7 @@ import java.util.*
 class AwsEventListenerProvider(
     private val session: KeycloakSession,
     private val config: AwsEventListenerConfig,
-    private val messagePublisher: AwsMessagePublisher,
+    private val connectionManager: AwsConnectionManager,
     private val metrics: AwsEventMetrics,
     private val circuitBreaker: CircuitBreaker,
     private val retryPolicy: RetryPolicy,
@@ -195,9 +194,9 @@ class AwsEventListenerProvider(
                         operation = {
                             when {
                                 message.queueUrl != null ->
-                                    messagePublisher.sendToSqs(message.queueUrl, message.messageBody, message.messageAttributes)
+                                    connectionManager.sendToSqs(message.queueUrl, message.messageBody, message.messageAttributes)
                                 message.topicArn != null ->
-                                    messagePublisher.sendToSns(message.topicArn, message.messageBody, message.messageAttributes)
+                                    connectionManager.sendToSns(message.topicArn, message.messageBody, message.messageAttributes)
                                 else -> logger.warn("No destination configured for message: ${message.meta.eventType}")
                             }
                         },
