@@ -22,7 +22,7 @@ import java.util.*
 class KafkaEventListenerProvider(
     private val session: KeycloakSession,
     private val config: KafkaEventListenerConfig,
-    private val producerManager: KafkaProducerManager,
+    private val connectionManager: KafkaConnectionManager,
     private val metrics: KafkaEventMetrics,
     private val circuitBreaker: CircuitBreaker,
     private val retryPolicy: RetryPolicy,
@@ -209,7 +209,7 @@ class KafkaEventListenerProvider(
             circuitBreaker.execute {
                 retryPolicy.execute(
                     operation = {
-                        producerManager.sendEvent(topic, key, value)
+                        connectionManager.sendEvent(topic, key, value)
                     },
                     onRetry = { attempt, exception, delay ->
                         logger.warn(

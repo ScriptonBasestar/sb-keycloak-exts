@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
     private val logger = Logger.getLogger(KafkaEventListenerProviderFactory::class.java)
-    private val producerManagers = ConcurrentHashMap<String, KafkaProducerManager>()
+    private val connectionManagers = ConcurrentHashMap<String, KafkaConnectionManager>()
 
     private var initConfigScope: Config.Scope? = null
     private var metricsExporter: PrometheusMetricsExporter? = null
@@ -30,11 +30,11 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
     override fun create(session: KeycloakSession): EventListenerProvider =
         try {
             val config = KafkaEventListenerConfig(session, initConfigScope)
-            val producerManager = getOrCreateProducerManager(config)
+            val connectionManager = getOrCreateConnectionManager(config)
             KafkaEventListenerProvider(
                 session,
                 config,
-                producerManager,
+                connectionManager,
                 metrics,
                 circuitBreaker,
                 retryPolicy,
@@ -46,11 +46,11 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
             throw e
         }
 
-    private fun getOrCreateProducerManager(config: KafkaEventListenerConfig): KafkaProducerManager {
+    private fun getOrCreateConnectionManager(config: KafkaEventListenerConfig): KafkaConnectionManager {
         val key = "${config.bootstrapServers}:${config.clientId}"
-        return producerManagers.computeIfAbsent(key) {
-            logger.info("Creating new KafkaProducerManager for key: $key")
-            KafkaProducerManager(config)
+        return connectionManagers.computeIfAbsent(key) {
+            logger.info("Creating new KafkaConnectionManager for key: $key")
+            KafkaConnectionManager(config)
         }
     }
 
@@ -153,7 +153,7 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
                 flushInterval = Duration.ofMillis(batchFlushInterval),
                 processBatch = { batch ->
                     batch.forEach { message ->
-                        producerManagers.values.firstOrNull()?.sendEvent(message.topic, message.key, message.value)
+                        connectionManagers.values.firstOrNull()?.sendEvent(message.topic, message.key, message.value)
                     }
                 },
                 onError = { batch, exception ->
@@ -194,14 +194,14 @@ class KafkaEventListenerProviderFactory : EventListenerProviderFactory {
             logger.info("Batch processor stopped")
         }
 
-        producerManagers.values.forEach { manager ->
+        connectionManagers.values.forEach { manager ->
             try {
                 manager.close()
             } catch (e: Exception) {
-                logger.error("Error closing KafkaProducerManager", e)
+                logger.error("Error closing KafkaConnectionManager", e)
             }
         }
-        producerManagers.clear()
+        connectionManagers.clear()
 
         // Stop Prometheus exporter
         metricsExporter?.stop()
