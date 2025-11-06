@@ -74,7 +74,9 @@ class AzureEventMetrics(
 
         prometheusExporter?.recordEventFailed(eventType, realm, destination, errorType, LISTENER_TYPE)
 
-        logger.debug("Event failure recorded: type=$eventType, realm=$realm, destination=$destination, error=$errorType")
+        logger.debug(
+            "Event failure recorded: type=$eventType, realm=$realm, destination=$destination, error=$errorType",
+        )
     }
 
     /**

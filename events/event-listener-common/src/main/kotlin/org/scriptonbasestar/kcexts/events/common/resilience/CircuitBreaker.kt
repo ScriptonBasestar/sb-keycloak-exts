@@ -218,7 +218,9 @@ class CircuitBreaker(
 /**
  * Exception thrown when circuit breaker is OPEN
  */
-class CircuitBreakerOpenException(message: String) : RuntimeException(message)
+class CircuitBreakerOpenException(
+    message: String,
+) : RuntimeException(message)
 
 /**
  * Circuit breaker metrics data class

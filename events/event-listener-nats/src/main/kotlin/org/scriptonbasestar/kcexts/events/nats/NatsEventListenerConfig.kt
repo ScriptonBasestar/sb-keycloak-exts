@@ -27,8 +27,7 @@ data class NatsEventListenerConfig(
         fun fromRuntime(
             session: KeycloakSession,
             configScope: Config.Scope?,
-        ): NatsEventListenerConfig =
-            fromLoader(ConfigLoader.forRuntime(session, configScope, CONFIG_PREFIX))
+        ): NatsEventListenerConfig = fromLoader(ConfigLoader.forRuntime(session, configScope, CONFIG_PREFIX))
 
         fun fromInit(configScope: Config.Scope): NatsEventListenerConfig =
             fromLoader(ConfigLoader.forInitTime(configScope, CONFIG_PREFIX))
@@ -45,7 +44,8 @@ data class NatsEventListenerConfig(
                 enableUserEvents = config.valueFor("enableUserEvents", "enable.user.events")?.toBoolean() ?: true,
                 enableAdminEvents = config.valueFor("enableAdminEvents", "enable.admin.events")?.toBoolean() ?: true,
                 includedEventTypes = parseEventTypes(config.valueFor("includedEventTypes", "included.event.types")),
-                connectionTimeout = config.valueFor("connectionTimeout", "connection.timeout.ms")?.toIntOrNull() ?: 60_000,
+                connectionTimeout =
+                    config.valueFor("connectionTimeout", "connection.timeout.ms")?.toIntOrNull() ?: 60_000,
                 maxReconnects = config.valueFor("maxReconnects", "max.reconnects")?.toIntOrNull() ?: 60,
                 reconnectWait = config.valueFor("reconnectWait", "reconnect.wait.ms")?.toLongOrNull() ?: 2_000,
                 noEcho = config.valueFor("noEcho", "no.echo")?.toBoolean() ?: false,
@@ -60,7 +60,8 @@ data class NatsEventListenerConfig(
                 token = loader.getString("token"),
                 useTls = loader.getBoolean("use.tls", false),
                 userEventSubject = loader.getString("subject.user", "keycloak.events.user") ?: "keycloak.events.user",
-                adminEventSubject = loader.getString("subject.admin", "keycloak.events.admin") ?: "keycloak.events.admin",
+                adminEventSubject =
+                    loader.getString("subject.admin", "keycloak.events.admin") ?: "keycloak.events.admin",
                 enableUserEvents = loader.getBoolean("enable.user.events", true),
                 enableAdminEvents = loader.getBoolean("enable.admin.events", true),
                 includedEventTypes = parseEventTypes(loader.getString("included.event.types")),
@@ -80,7 +81,8 @@ data class NatsEventListenerConfig(
                 ?: emptySet()
 
         private fun Map<String, String?>.valueFor(vararg keys: String): String? =
-            keys.asSequence()
+            keys
+                .asSequence()
                 .mapNotNull { key -> this[key] ?: this["$CONFIG_PREFIX.$key"] }
                 .firstOrNull()
     }

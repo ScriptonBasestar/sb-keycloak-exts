@@ -115,7 +115,8 @@ class KafkaEventListenerProviderTest {
     fun `should handle user event errors gracefully`() {
         val event = KeycloakEventTestFixtures.createUserEvent()
         doThrow(RuntimeException("Kafka connection failed"))
-            .whenever(connectionManager).sendEvent(any(), any(), any())
+            .whenever(connectionManager)
+            .sendEvent(any(), any(), any())
 
         assertDoesNotThrow {
             provider.onEvent(event)
@@ -152,7 +153,8 @@ class KafkaEventListenerProviderTest {
     fun `should handle admin event errors gracefully`() {
         val adminEvent = KeycloakEventTestFixtures.createAdminEvent()
         doThrow(RuntimeException("Kafka connection failed"))
-            .whenever(connectionManager).sendEvent(any(), any(), any())
+            .whenever(connectionManager)
+            .sendEvent(any(), any(), any())
 
         assertDoesNotThrow {
             provider.onEvent(adminEvent, false)
@@ -246,11 +248,12 @@ class KafkaEventListenerProviderTest {
 
     @Test
     fun `should serialize event to JSON`() {
-        val event = KeycloakEventTestFixtures.createUserEvent(
-            type = EventType.LOGIN,
-            realmId = "test-realm",
-            userId = "user-123",
-        )
+        val event =
+            KeycloakEventTestFixtures.createUserEvent(
+                type = EventType.LOGIN,
+                realmId = "test-realm",
+                userId = "user-123",
+            )
         var capturedValue = ""
 
         whenever(connectionManager.sendEvent(any(), any(), any())).then { invocation ->

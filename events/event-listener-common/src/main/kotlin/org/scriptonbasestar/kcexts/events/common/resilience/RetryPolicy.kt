@@ -2,7 +2,6 @@ package org.scriptonbasestar.kcexts.events.common.resilience
 
 import org.jboss.logging.Logger
 import java.time.Duration
-import kotlin.math.min
 import kotlin.math.pow
 
 /**
@@ -128,8 +127,7 @@ class RetryPolicy(
     /**
      * Check if exception is retryable
      */
-    private fun isRetryable(exception: Exception): Boolean =
-        retryableExceptions.any { it.isInstance(exception) }
+    private fun isRetryable(exception: Exception): Boolean = retryableExceptions.any { it.isInstance(exception) }
 
     /**
      * Calculate delay based on backoff strategy

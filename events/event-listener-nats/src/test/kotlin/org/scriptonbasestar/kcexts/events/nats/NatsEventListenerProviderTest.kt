@@ -112,7 +112,8 @@ class NatsEventListenerProviderTest {
     fun `should handle user event errors gracefully`() {
         val event = KeycloakEventTestFixtures.createUserEvent()
         doThrow(RuntimeException("Connection failed"))
-            .whenever(connectionManager).publish(any(), any())
+            .whenever(connectionManager)
+            .publish(any(), any())
 
         assertDoesNotThrow {
             provider.onEvent(event)
@@ -149,7 +150,8 @@ class NatsEventListenerProviderTest {
     fun `should handle admin event errors gracefully`() {
         val adminEvent = KeycloakEventTestFixtures.createAdminEvent()
         doThrow(RuntimeException("Connection failed"))
-            .whenever(connectionManager).publish(any(), any())
+            .whenever(connectionManager)
+            .publish(any(), any())
 
         assertDoesNotThrow {
             provider.onEvent(adminEvent, false)

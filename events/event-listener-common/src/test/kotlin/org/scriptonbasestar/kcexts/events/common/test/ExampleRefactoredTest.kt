@@ -3,9 +3,7 @@ package org.scriptonbasestar.kcexts.events.common.test
 import org.junit.jupiter.api.Test
 import org.keycloak.events.EventType
 import org.keycloak.events.admin.OperationType
-import org.mockito.kotlin.verify
 import org.mockito.kotlin.times
-import org.mockito.kotlin.any
 
 /**
  * Example test demonstrating the usage of common test utilities.
@@ -122,7 +120,10 @@ class ExampleRefactoredTest {
     @Test
     fun `example - verify metrics`() {
         // Simulate metrics summary
-        data class MetricsSummary(val totalSent: Long, val totalFailed: Long)
+        data class MetricsSummary(
+            val totalSent: Long,
+            val totalFailed: Long,
+        )
 
         val summary = MetricsSummary(totalSent = 10, totalFailed = 0)
 

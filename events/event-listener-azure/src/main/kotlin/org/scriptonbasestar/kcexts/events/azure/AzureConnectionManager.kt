@@ -207,14 +207,13 @@ class AzureConnectionManager(
         }
     }
 
-    override fun isConnected(): Boolean {
-        return try {
+    override fun isConnected(): Boolean =
+        try {
             !closed.get()
         } catch (e: Exception) {
             logger.warn("Connection check failed", e)
             false
         }
-    }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {

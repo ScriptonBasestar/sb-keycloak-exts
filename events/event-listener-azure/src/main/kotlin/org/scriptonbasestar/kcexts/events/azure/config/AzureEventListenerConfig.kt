@@ -26,13 +26,17 @@ class AzureEventListenerConfig(
 
     // Queue 설정
     val useQueue: Boolean = configLoader.getBoolean("use.queue", true)
-    val userEventsQueueName: String = configLoader.getString("queue.user.events", "keycloak-user-events") ?: "keycloak-user-events"
-    val adminEventsQueueName: String = configLoader.getString("queue.admin.events", "keycloak-admin-events") ?: "keycloak-admin-events"
+    val userEventsQueueName: String =
+        configLoader.getString("queue.user.events", "keycloak-user-events") ?: "keycloak-user-events"
+    val adminEventsQueueName: String =
+        configLoader.getString("queue.admin.events", "keycloak-admin-events") ?: "keycloak-admin-events"
 
     // Topic 설정
     val useTopic: Boolean = configLoader.getBoolean("use.topic", false)
-    val userEventsTopicName: String = configLoader.getString("topic.user.events", "keycloak-user-events") ?: "keycloak-user-events"
-    val adminEventsTopicName: String = configLoader.getString("topic.admin.events", "keycloak-admin-events") ?: "keycloak-admin-events"
+    val userEventsTopicName: String =
+        configLoader.getString("topic.user.events", "keycloak-user-events") ?: "keycloak-user-events"
+    val adminEventsTopicName: String =
+        configLoader.getString("topic.admin.events", "keycloak-admin-events") ?: "keycloak-admin-events"
 
     // 이벤트 필터링
     val includedEventTypes: Set<EventType> =

@@ -99,37 +99,31 @@ class RedisConnectionManager(
     /**
      * Send user event to configured user events stream
      */
-    fun sendUserEvent(fields: Map<String, String>): String? {
-        return sendEvent(config.userEventsStream, fields)
-    }
+    fun sendUserEvent(fields: Map<String, String>): String? = sendEvent(config.userEventsStream, fields)
 
     /**
      * Send admin event to configured admin events stream
      */
-    fun sendAdminEvent(fields: Map<String, String>): String? {
-        return sendEvent(config.adminEventsStream, fields)
-    }
+    fun sendAdminEvent(fields: Map<String, String>): String? = sendEvent(config.adminEventsStream, fields)
 
     /**
      * Get stream length
      */
-    fun getStreamLength(streamKey: String): Long {
-        return try {
+    fun getStreamLength(streamKey: String): Long =
+        try {
             commands.xlen(streamKey)
         } catch (e: Exception) {
             logger.warn("Failed to get stream length for '$streamKey'", e)
             0L
         }
-    }
 
-    override fun isConnected(): Boolean {
-        return try {
+    override fun isConnected(): Boolean =
+        try {
             !closed.get() && connection.isOpen && commands.ping() == "PONG"
         } catch (e: Exception) {
             logger.warn("Connection check failed", e)
             false
         }
-    }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {

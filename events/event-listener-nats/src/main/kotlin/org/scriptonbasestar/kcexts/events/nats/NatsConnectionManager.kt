@@ -67,15 +67,14 @@ class NatsConnectionManager(
     override fun send(
         destination: String,
         message: String,
-    ): Boolean {
-        return try {
+    ): Boolean =
+        try {
             publish(destination, message)
             true
         } catch (e: Exception) {
             logger.error("Failed to send message to NATS subject '$destination'", e)
             false
         }
-    }
 
     /**
      * Publish a message to a subject (legacy method for backward compatibility).

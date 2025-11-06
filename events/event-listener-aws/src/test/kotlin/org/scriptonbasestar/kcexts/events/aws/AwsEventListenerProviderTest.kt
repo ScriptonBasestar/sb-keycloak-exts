@@ -6,9 +6,6 @@ import org.junit.jupiter.api.Test
 import org.keycloak.events.EventType
 import org.keycloak.models.KeycloakSession
 import org.mockito.kotlin.any
-import org.mockito.kotlin.doNothing
-import org.mockito.kotlin.doThrow
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.times
@@ -59,8 +56,12 @@ class AwsEventListenerProviderTest {
         whenever(config.enableAdminEvents).thenReturn(true)
         whenever(config.useSqs).thenReturn(true)
         whenever(config.useSns).thenReturn(false)
-        whenever(config.sqsUserEventsQueueUrl).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/keycloak-user-events")
-        whenever(config.sqsAdminEventsQueueUrl).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/keycloak-admin-events")
+        whenever(
+            config.sqsUserEventsQueueUrl,
+        ).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/keycloak-user-events")
+        whenever(
+            config.sqsAdminEventsQueueUrl,
+        ).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/keycloak-admin-events")
         whenever(config.includedEventTypes).thenReturn(setOf(EventType.LOGIN, EventType.LOGOUT, EventType.REGISTER))
 
         provider = createProvider()
@@ -237,11 +238,12 @@ class AwsEventListenerProviderTest {
 
     @Test
     fun `should serialize event to JSON`() {
-        val event = KeycloakEventTestFixtures.createUserEvent(
-            type = EventType.LOGIN,
-            realmId = "test-realm",
-            userId = "user-123",
-        )
+        val event =
+            KeycloakEventTestFixtures.createUserEvent(
+                type = EventType.LOGIN,
+                realmId = "test-realm",
+                userId = "user-123",
+            )
         var capturedMessage = ""
 
         whenever(connectionManager.sendToSqs(any(), any(), any())).then { invocation ->

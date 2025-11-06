@@ -194,9 +194,17 @@ class AwsEventListenerProvider(
                         operation = {
                             when {
                                 message.queueUrl != null ->
-                                    connectionManager.sendToSqs(message.queueUrl, message.messageBody, message.messageAttributes)
+                                    connectionManager.sendToSqs(
+                                        message.queueUrl,
+                                        message.messageBody,
+                                        message.messageAttributes,
+                                    )
                                 message.topicArn != null ->
-                                    connectionManager.sendToSns(message.topicArn, message.messageBody, message.messageAttributes)
+                                    connectionManager.sendToSns(
+                                        message.topicArn,
+                                        message.messageBody,
+                                        message.messageAttributes,
+                                    )
                                 else -> logger.warn("No destination configured for message: ${message.meta.eventType}")
                             }
                         },

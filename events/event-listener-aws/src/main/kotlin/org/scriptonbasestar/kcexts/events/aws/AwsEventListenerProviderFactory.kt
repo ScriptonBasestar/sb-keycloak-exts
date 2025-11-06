@@ -117,9 +117,17 @@ class AwsEventListenerProviderFactory : EventListenerProviderFactory {
                     batch.forEach { message ->
                         connectionManagers.values.firstOrNull()?.let { connectionManager ->
                             if (message.queueUrl != null) {
-                                connectionManager.sendToSqs(message.queueUrl, message.messageBody, message.messageAttributes)
+                                connectionManager.sendToSqs(
+                                    message.queueUrl,
+                                    message.messageBody,
+                                    message.messageAttributes,
+                                )
                             } else if (message.topicArn != null) {
-                                connectionManager.sendToSns(message.topicArn, message.messageBody, message.messageAttributes)
+                                connectionManager.sendToSns(
+                                    message.topicArn,
+                                    message.messageBody,
+                                    message.messageAttributes,
+                                )
                             }
                         }
                     }

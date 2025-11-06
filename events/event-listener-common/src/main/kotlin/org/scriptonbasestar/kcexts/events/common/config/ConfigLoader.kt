@@ -25,7 +25,12 @@ class ConfigLoader(
         defaultValue: String? = null,
     ): String? {
         // 1. Try realm attributes (runtime, per-realm)
-        session?.context?.realm?.attributes?.get("$prefix.$key")?.let { return it }
+        session
+            ?.context
+            ?.realm
+            ?.attributes
+            ?.get("$prefix.$key")
+            ?.let { return it }
 
         // 2. Try Config.Scope (init-time, global)
         configScope?.get(key)?.let { return it }
@@ -49,8 +54,7 @@ class ConfigLoader(
     fun getInt(
         key: String,
         defaultValue: Int,
-    ): Int =
-        getString(key)?.toIntOrNull() ?: defaultValue
+    ): Int = getString(key)?.toIntOrNull() ?: defaultValue
 
     /**
      * Get a long value
@@ -58,8 +62,7 @@ class ConfigLoader(
     fun getLong(
         key: String,
         defaultValue: Long,
-    ): Long =
-        getString(key)?.toLongOrNull() ?: defaultValue
+    ): Long = getString(key)?.toLongOrNull() ?: defaultValue
 
     /**
      * Get a boolean value
@@ -67,8 +70,7 @@ class ConfigLoader(
     fun getBoolean(
         key: String,
         defaultValue: Boolean,
-    ): Boolean =
-        getString(key)?.toBoolean() ?: defaultValue
+    ): Boolean = getString(key)?.toBoolean() ?: defaultValue
 
     /**
      * Get a comma-separated list of strings

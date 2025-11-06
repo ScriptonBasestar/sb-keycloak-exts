@@ -34,8 +34,7 @@ data class RabbitMQEventListenerConfig(
         fun fromRuntime(
             session: KeycloakSession,
             configScope: Config.Scope?,
-        ): RabbitMQEventListenerConfig =
-            fromLoader(ConfigLoader.forRuntime(session, configScope, CONFIG_PREFIX))
+        ): RabbitMQEventListenerConfig = fromLoader(ConfigLoader.forRuntime(session, configScope, CONFIG_PREFIX))
 
         fun fromInit(configScope: Config.Scope): RabbitMQEventListenerConfig =
             fromLoader(ConfigLoader.forInitTime(configScope, CONFIG_PREFIX))
@@ -54,17 +53,22 @@ data class RabbitMQEventListenerConfig(
                 queueDurable = config.valueFor("queueDurable", "queue.durable")?.toBoolean() ?: true,
                 queueAutoDelete = config.valueFor("queueAutoDelete", "queue.auto.delete")?.toBoolean() ?: false,
                 userEventRoutingKey = config.valueFor("userEventRoutingKey", "routing.user") ?: "keycloak.events.user",
-                adminEventRoutingKey = config.valueFor("adminEventRoutingKey", "routing.admin") ?: "keycloak.events.admin",
+                adminEventRoutingKey =
+                    config.valueFor("adminEventRoutingKey", "routing.admin") ?: "keycloak.events.admin",
                 enableUserEvents = config.valueFor("enableUserEvents", "enable.user.events")?.toBoolean() ?: true,
                 enableAdminEvents = config.valueFor("enableAdminEvents", "enable.admin.events")?.toBoolean() ?: true,
                 includedEventTypes = parseEventTypes(config.valueFor("includedEventTypes", "included.event.types")),
-                connectionTimeout = config.valueFor("connectionTimeout", "connection.timeout.ms")?.toIntOrNull() ?: 60_000,
+                connectionTimeout =
+                    config.valueFor("connectionTimeout", "connection.timeout.ms")?.toIntOrNull() ?: 60_000,
                 requestedHeartbeat = config.valueFor("requestedHeartbeat", "requested.heartbeat")?.toIntOrNull() ?: 60,
-                networkRecoveryInterval = config.valueFor("networkRecoveryInterval", "network.recovery.interval.ms")?.toLongOrNull() ?: 5_000,
-                automaticRecoveryEnabled = config.valueFor("automaticRecoveryEnabled", "automatic.recovery.enabled")?.toBoolean() ?: true,
+                networkRecoveryInterval =
+                    config.valueFor("networkRecoveryInterval", "network.recovery.interval.ms")?.toLongOrNull() ?: 5_000,
+                automaticRecoveryEnabled =
+                    config.valueFor("automaticRecoveryEnabled", "automatic.recovery.enabled")?.toBoolean() ?: true,
                 publisherConfirms = config.valueFor("publisherConfirms", "publisher.confirms")?.toBoolean() ?: false,
-                publisherConfirmTimeout = config.valueFor("publisherConfirmTimeout", "publisher.confirm.timeout.ms")?.toLongOrNull()
-                    ?: 5_000,
+                publisherConfirmTimeout =
+                    config.valueFor("publisherConfirmTimeout", "publisher.confirm.timeout.ms")?.toLongOrNull()
+                        ?: 5_000,
             )
 
         private fun fromLoader(loader: ConfigLoader): RabbitMQEventListenerConfig =
@@ -80,8 +84,13 @@ data class RabbitMQEventListenerConfig(
                 exchangeDurable = loader.getBoolean("exchange.durable", true),
                 queueDurable = loader.getBoolean("queue.durable", true),
                 queueAutoDelete = loader.getBoolean("queue.auto.delete", false),
-                userEventRoutingKey = loader.getString("routing.user", "keycloak.events.user") ?: "keycloak.events.user",
-                adminEventRoutingKey = loader.getString("routing.admin", "keycloak.events.admin") ?: "keycloak.events.admin",
+                userEventRoutingKey =
+                    loader.getString(
+                        "routing.user",
+                        "keycloak.events.user",
+                    ) ?: "keycloak.events.user",
+                adminEventRoutingKey =
+                    loader.getString("routing.admin", "keycloak.events.admin") ?: "keycloak.events.admin",
                 enableUserEvents = loader.getBoolean("enable.user.events", true),
                 enableAdminEvents = loader.getBoolean("enable.admin.events", true),
                 includedEventTypes = parseEventTypes(loader.getString("included.event.types")),
@@ -102,7 +111,8 @@ data class RabbitMQEventListenerConfig(
                 ?: emptySet()
 
         private fun Map<String, String?>.valueFor(vararg keys: String): String? =
-            keys.asSequence()
+            keys
+                .asSequence()
                 .mapNotNull { key -> this[key] ?: this["$CONFIG_PREFIX.$key"] }
                 .firstOrNull()
     }

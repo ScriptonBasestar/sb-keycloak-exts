@@ -135,7 +135,8 @@ class AzureEventListenerProviderTest {
     fun `should handle user event errors gracefully`() {
         val event = KeycloakEventTestFixtures.createUserEvent()
         doThrow(RuntimeException("Azure connection failed"))
-            .whenever(connectionManager).sendToQueue(any(), any(), any())
+            .whenever(connectionManager)
+            .sendToQueue(any(), any(), any())
 
         assertDoesNotThrow {
             provider.onEvent(event)
@@ -173,7 +174,8 @@ class AzureEventListenerProviderTest {
     fun `should handle admin event errors gracefully`() {
         val adminEvent = KeycloakEventTestFixtures.createAdminEvent()
         doThrow(RuntimeException("Azure connection failed"))
-            .whenever(connectionManager).sendToQueue(any(), any(), any())
+            .whenever(connectionManager)
+            .sendToQueue(any(), any(), any())
 
         assertDoesNotThrow {
             provider.onEvent(adminEvent, false)
@@ -255,11 +257,12 @@ class AzureEventListenerProviderTest {
 
     @Test
     fun `should serialize event to JSON`() {
-        val event = KeycloakEventTestFixtures.createUserEvent(
-            type = EventType.LOGIN,
-            realmId = "test-realm",
-            userId = "user-123",
-        )
+        val event =
+            KeycloakEventTestFixtures.createUserEvent(
+                type = EventType.LOGIN,
+                realmId = "test-realm",
+                userId = "user-123",
+            )
         var capturedMessage = ""
 
         whenever(connectionManager.sendToQueue(any(), any(), any())).then { invocation ->

@@ -90,15 +90,14 @@ class RabbitMQConnectionManager(
     override fun send(
         destination: String,
         message: String,
-    ): Boolean {
-        return try {
+    ): Boolean =
+        try {
             publishMessage(destination, message)
             true
         } catch (e: Exception) {
             logger.error("Failed to send message to RabbitMQ with routing key '$destination'", e)
             false
         }
-    }
 
     /**
      * Publish message to RabbitMQ (legacy method for backward compatibility).

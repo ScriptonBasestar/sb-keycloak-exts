@@ -114,7 +114,8 @@ class RabbitMQEventListenerProviderTest {
     fun `should handle user event errors gracefully`() {
         val event = KeycloakEventTestFixtures.createUserEvent()
         doThrow(RuntimeException("Connection failed"))
-            .whenever(connectionManager).publishMessage(any(), any())
+            .whenever(connectionManager)
+            .publishMessage(any(), any())
 
         assertDoesNotThrow {
             provider.onEvent(event)
@@ -151,7 +152,8 @@ class RabbitMQEventListenerProviderTest {
     fun `should handle admin event errors gracefully`() {
         val adminEvent = KeycloakEventTestFixtures.createAdminEvent()
         doThrow(RuntimeException("Connection failed"))
-            .whenever(connectionManager).publishMessage(any(), any())
+            .whenever(connectionManager)
+            .publishMessage(any(), any())
 
         assertDoesNotThrow {
             createProvider(config).onEvent(adminEvent, false)

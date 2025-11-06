@@ -13,12 +13,13 @@ class RetryPolicyTest {
         val policy = RetryPolicy(maxAttempts = 3)
         var callCount = 0
 
-        val result = policy.execute<String>(
-            operation = {
-                callCount++
-                "success"
-            },
-        )
+        val result =
+            policy.execute<String>(
+                operation = {
+                    callCount++
+                    "success"
+                },
+            )
 
         assertEquals("success", result)
         assertEquals(1, callCount)
@@ -29,13 +30,14 @@ class RetryPolicyTest {
         val policy = RetryPolicy(maxAttempts = 3, initialDelay = Duration.ofMillis(10))
         var callCount = 0
 
-        val result = policy.execute<String>(
-            operation = {
-                callCount++
-                if (callCount < 3) throw RuntimeException("temporary failure")
-                "success"
-            },
-        )
+        val result =
+            policy.execute<String>(
+                operation = {
+                    callCount++
+                    if (callCount < 3) throw RuntimeException("temporary failure")
+                    "success"
+                },
+            )
 
         assertEquals("success", result)
         assertEquals(3, callCount)
@@ -46,14 +48,15 @@ class RetryPolicyTest {
         val policy = RetryPolicy(maxAttempts = 3, initialDelay = Duration.ofMillis(10))
         var callCount = 0
 
-        val exception = assertThrows<RetryExhaustedException> {
-            policy.execute<String>(
-                operation = {
-                    callCount++
-                    throw RuntimeException("persistent failure")
-                },
-            )
-        }
+        val exception =
+            assertThrows<RetryExhaustedException> {
+                policy.execute<String>(
+                    operation = {
+                        callCount++
+                        throw RuntimeException("persistent failure")
+                    },
+                )
+            }
 
         assertEquals(3, callCount)
         assertTrue(exception.message!!.contains("3 attempts"))
@@ -91,15 +94,16 @@ class RetryPolicyTest {
             )
         var callCount = 0
 
-        val result = policy.execute<String>(
-            operation = {
-                callCount++
-                when (callCount) {
-                    1, 2 -> throw IOException("retryable failure")
-                    else -> "success"
-                }
-            },
-        )
+        val result =
+            policy.execute<String>(
+                operation = {
+                    callCount++
+                    when (callCount) {
+                        1, 2 -> throw IOException("retryable failure")
+                        else -> "success"
+                    }
+                },
+            )
 
         assertEquals("success", result)
         assertEquals(3, callCount)

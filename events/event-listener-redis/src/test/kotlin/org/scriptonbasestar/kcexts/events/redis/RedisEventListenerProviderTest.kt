@@ -6,8 +6,6 @@ import org.junit.jupiter.api.Test
 import org.keycloak.events.EventType
 import org.keycloak.models.KeycloakSession
 import org.mockito.kotlin.any
-import org.mockito.kotlin.doNothing
-import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -229,11 +227,12 @@ class RedisEventListenerProviderTest {
 
     @Test
     fun `should serialize event to JSON`() {
-        val event = KeycloakEventTestFixtures.createUserEvent(
-            type = EventType.LOGIN,
-            realmId = "test-realm",
-            userId = "user-123",
-        )
+        val event =
+            KeycloakEventTestFixtures.createUserEvent(
+                type = EventType.LOGIN,
+                realmId = "test-realm",
+                userId = "user-123",
+            )
         var capturedFields: Map<String, String> = emptyMap()
 
         whenever(connectionManager.sendEvent(any(), any())).then { invocation ->

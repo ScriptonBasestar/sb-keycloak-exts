@@ -13,9 +13,9 @@ import software.amazon.awssdk.services.sns.SnsClient
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue
 import software.amazon.awssdk.services.sns.model.PublishRequest
 import software.amazon.awssdk.services.sqs.SqsClient
-import software.amazon.awssdk.services.sqs.model.MessageAttributeValue as SqsMessageAttributeValue
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import java.util.concurrent.atomic.AtomicBoolean
+import software.amazon.awssdk.services.sqs.model.MessageAttributeValue as SqsMessageAttributeValue
 
 /**
  * AWS SQS/SNS implementation of EventConnectionManager.
@@ -66,8 +66,8 @@ class AwsConnectionManager(
             }
     }
 
-    private fun createCredentialsProvider(): AwsCredentialsProvider {
-        return if (config.useInstanceProfile) {
+    private fun createCredentialsProvider(): AwsCredentialsProvider =
+        if (config.useInstanceProfile) {
             logger.info("Using AWS instance profile credentials")
             InstanceProfileCredentialsProvider.create()
         } else if (config.awsAccessKeyId != null && config.awsSecretAccessKey != null) {
@@ -79,7 +79,6 @@ class AwsConnectionManager(
             logger.warn("No AWS credentials configured, using default provider chain")
             InstanceProfileCredentialsProvider.create()
         }
-    }
 
     /**
      * Send message to specified AWS destination.
@@ -210,8 +209,8 @@ class AwsConnectionManager(
     fun sendUserEvent(
         messageBody: String,
         attributes: Map<String, String>,
-    ): String? {
-        return when {
+    ): String? =
+        when {
             config.useSqs && config.sqsUserEventsQueueUrl.isNotBlank() ->
                 sendToSqs(config.sqsUserEventsQueueUrl, messageBody, attributes)
             config.useSns && config.snsUserEventsTopicArn.isNotBlank() ->
@@ -221,7 +220,6 @@ class AwsConnectionManager(
                 null
             }
         }
-    }
 
     /**
      * Send admin event to configured destination
@@ -229,8 +227,8 @@ class AwsConnectionManager(
     fun sendAdminEvent(
         messageBody: String,
         attributes: Map<String, String>,
-    ): String? {
-        return when {
+    ): String? =
+        when {
             config.useSqs && config.sqsAdminEventsQueueUrl.isNotBlank() ->
                 sendToSqs(config.sqsAdminEventsQueueUrl, messageBody, attributes)
             config.useSns && config.snsAdminEventsTopicArn.isNotBlank() ->
@@ -240,17 +238,15 @@ class AwsConnectionManager(
                 null
             }
         }
-    }
 
-    override fun isConnected(): Boolean {
-        return try {
+    override fun isConnected(): Boolean =
+        try {
             !closed.get() &&
                 ((sqsClient != null && config.useSqs) || (snsClient != null && config.useSns))
         } catch (e: Exception) {
             logger.warn("Connection check failed", e)
             false
         }
-    }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {

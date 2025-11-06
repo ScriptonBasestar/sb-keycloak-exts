@@ -291,7 +291,7 @@ class BatchProcessorTest {
             (1..10).map { threadNum ->
                 Thread {
                     repeat(10) { i ->
-                        processor.add("thread${threadNum}-event$i")
+                        processor.add("thread$threadNum-event$i")
                     }
                 }
             }

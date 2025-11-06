@@ -11,9 +11,9 @@ import org.scriptonbasestar.kcexts.events.azure.metrics.AzureEventMetrics
 import org.scriptonbasestar.kcexts.events.common.batch.BatchProcessor
 import org.scriptonbasestar.kcexts.events.common.dlq.DeadLetterQueue
 import org.scriptonbasestar.kcexts.events.common.model.AuthDetails
+import org.scriptonbasestar.kcexts.events.common.model.EventMeta
 import org.scriptonbasestar.kcexts.events.common.model.KeycloakAdminEvent
 import org.scriptonbasestar.kcexts.events.common.model.KeycloakEvent
-import org.scriptonbasestar.kcexts.events.common.model.EventMeta
 import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreaker
 import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreakerOpenException
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryExhaustedException

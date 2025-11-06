@@ -55,12 +55,11 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
     private fun getOrCreateConnectionManager(
         connectionKey: String,
         config: AzureEventListenerConfig,
-    ): AzureConnectionManager {
-        return connectionManagers.computeIfAbsent(connectionKey) {
+    ): AzureConnectionManager =
+        connectionManagers.computeIfAbsent(connectionKey) {
             logger.info("Creating new AzureConnectionManager for key: $connectionKey")
             AzureConnectionManager(config)
         }
-    }
 
     override fun init(config: Config.Scope) {
         logger.info("Initializing AzureEventListenerProviderFactory")
@@ -129,7 +128,10 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
                                 logger.error("No AzureConnectionManager found for key: $connectionKey")
                                 metrics.updateConnectionStatus(false)
                                 messages.forEach { message ->
-                                    addToDeadLetterQueue(message, IllegalStateException("Missing connection manager for batch"))
+                                    addToDeadLetterQueue(
+                                        message,
+                                        IllegalStateException("Missing connection manager for batch"),
+                                    )
                                 }
                                 return@forEach
                             }
@@ -151,7 +153,10 @@ class AzureEventListenerProviderFactory : EventListenerProviderFactory {
                                                 message.properties,
                                             )
 
-                                        else -> logger.warn("Batch message missing destination: ${message.meta.eventType}")
+                                        else ->
+                                            logger.warn(
+                                                "Batch message missing destination: ${message.meta.eventType}",
+                                            )
                                     }
                                 } catch (e: Exception) {
                                     logger.error("Failed to send batched message: ${message.meta.eventType}", e)

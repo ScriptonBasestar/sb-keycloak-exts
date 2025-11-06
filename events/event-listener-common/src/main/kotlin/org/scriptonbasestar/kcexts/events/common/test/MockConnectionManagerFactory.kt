@@ -2,7 +2,6 @@ package org.scriptonbasestar.kcexts.events.common.test
 
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doNothing
-import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.scriptonbasestar.kcexts.events.common.connection.EventConnectionManager
