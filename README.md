@@ -19,6 +19,26 @@ This project provides Keycloak identity provider extensions for popular Korean s
 - **Google** - 구글 계정으로 로그인 (OpenID Connect 지원)
 - **GitHub** - 깃허브 계정으로 로그인
 
+### Event Listener 확장
+
+Keycloak 이벤트를 다양한 메시징 시스템으로 실시간 스트리밍:
+
+#### 메시징 시스템 지원
+- **Kafka** - Apache Kafka로 이벤트 스트리밍
+- **RabbitMQ** - RabbitMQ 메시지 큐로 이벤트 전송
+- **NATS** - NATS 메시징 시스템 통합
+- **Redis** - Redis Pub/Sub로 이벤트 발행
+- **MQTT** - MQTT 브로커로 IoT 통합 ✨ NEW
+- **AWS** - AWS SNS/SQS로 이벤트 전송
+- **Azure** - Azure Service Bus/Event Grid 통합
+
+#### Event Listener 주요 기능
+- **Resilience Patterns**: Circuit Breaker, Retry, Dead Letter Queue, Batch Processing
+- **Metrics & Monitoring**: Prometheus 메트릭, 실시간 모니터링
+- **Security**: TLS/SSL, 인증, 암호화 지원
+- **High Performance**: 비동기 처리, 배치 처리, 연결 풀링
+- **Production-Ready**: 완전한 에러 처리, 로깅, 테스트 커버리지
+
 ## 주요 기능 (Features)
 
 - 각 플랫폼과의 완전한 OAuth2 통합
@@ -51,21 +71,37 @@ This project provides Keycloak identity provider extensions for popular Korean s
    ```
 
 3. JAR 파일 생성 위치:
+
+   **Identity Providers:**
    - `idps/idp-kakao/build/libs/idp-kakao-*-all.jar`
    - `idps/idp-line/build/libs/idp-line-*-all.jar`
    - `idps/idp-naver/build/libs/idp-naver-*-all.jar`
    - `idps/idp-google/build/libs/idp-google-*-all.jar`
    - `idps/idp-github/build/libs/idp-github-*-all.jar`
 
+   **Event Listeners:**
+   - `events/event-listener-kafka/build/libs/keycloak-kafka-event-listener-*-all.jar`
+   - `events/event-listener-rabbitmq/build/libs/keycloak-rabbitmq-event-listener-*-all.jar`
+   - `events/event-listener-nats/build/libs/keycloak-nats-event-listener-*-all.jar`
+   - `events/event-listener-redis/build/libs/keycloak-redis-event-listener-*-all.jar`
+   - `events/event-listener-mqtt/build/libs/keycloak-mqtt-event-listener-*-all.jar` ✨
+   - `events/event-listener-aws/build/libs/keycloak-aws-event-listener-*-all.jar`
+   - `events/event-listener-azure/build/libs/keycloak-azure-event-listener-*-all.jar`
+
 ### 설치
 
-1. 원하는 provider JAR를 Keycloak에 복사:
+1. 원하는 확장 JAR를 Keycloak에 복사:
    ```bash
+   # Identity Providers
    cp idps/idp-*/build/libs/*-all.jar $KEYCLOAK_HOME/providers/
+
+   # Event Listeners (선택사항)
+   cp events/event-listener-*/build/libs/*-all.jar $KEYCLOAK_HOME/providers/
    ```
 
-2. Keycloak 재시작:
+2. Keycloak 빌드 및 재시작:
    ```bash
+   $KEYCLOAK_HOME/bin/kc.sh build
    $KEYCLOAK_HOME/bin/kc.sh start
    ```
 
@@ -145,6 +181,9 @@ Event Listener 모듈들은 TestContainers 기반 통합 테스트를 제공합�
 
 # NATS 통합 테스트
 ./gradlew :events:event-listener-nats:integrationTest
+
+# MQTT 통합 테스트 (선택사항 - 구현 가능)
+# ./gradlew :events:event-listener-mqtt:integrationTest
 ```
 
 **주의사항:**
@@ -236,10 +275,16 @@ sb-keycloak-exts/
    - Apple (https://github.com/klausbetz/apple-identity-provider-keycloak)
    - 공통 코드 추출하여 중복 제거
 
-3. **이벤트 리스너**
-   - Kafka (https://github.com/softwarefactory-project/keycloak-event-listener-mqtt)
-   - RabbitMQ (https://github.com/aznamier/keycloak-event-listener-rabbitmq)
-   - 로그인 이벤트 스트리밍
+3. **이벤트 리스너** ✅ 완료
+   - Kafka ✅
+   - RabbitMQ ✅
+   - NATS ✅
+   - Redis ✅
+   - MQTT ✅ NEW
+   - AWS SNS/SQS ✅
+   - Azure Service Bus/Event Grid ✅
+   - Resilience patterns 완전 구현
+   - Production-ready 품질
 
 4. **보안 및 모니터링**
    - 로깅 프레임워크 추가
