@@ -56,6 +56,7 @@ kafka = "3.9.1"
 rabbitmq = "5.27.0"
 lettuce = "6.5.2.RELEASE"
 nats = "2.20.5"
+mqtt-paho = "1.2.5"
 
 [libraries]
 # Kotlin
@@ -115,6 +116,7 @@ kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafk
 rabbitmq-client = { module = "com.rabbitmq:amqp-client", version.ref = "rabbitmq" }
 lettuce-core = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
 nats-client = { module = "io.nats:jnats", version.ref = "nats" }
+mqtt-client = { module = "org.eclipse.paho:org.eclipse.paho.client.mqttv3", version.ref = "mqtt-paho" }
 
 [bundles]
 kotlin = ["kotlin-reflect", "kotlin-stdlib", "kotlin-test", "kotlin-coroutines-core"]
