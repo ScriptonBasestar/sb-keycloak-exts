@@ -65,7 +65,8 @@ task integrationTest(type: Test) {
     }
 }
 
-check.dependsOn integrationTest
+// Integration Test는 기본 check에서 제외 (수동 또는 릴리즈 시에만 실행)
+// check.dependsOn integrationTest 제거됨
 
 // Production Build Configuration
 apply plugin: 'com.github.johnrengelman.shadow'
