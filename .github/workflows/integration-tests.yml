@@ -1,10 +1,24 @@
 name: Integration Tests
 
 on:
+  # 수동 실행 가능
+  workflow_dispatch:
+    inputs:
+      run_performance_tests:
+        description: 'Run performance tests (slow)'
+        required: false
+        type: boolean
+        default: false
+
+  # Release 브랜치에서만 자동 실행
   push:
-    branches: [ develop, master ]
+    branches:
+      - 'release/**'
+      - 'release'
+
+  # PR에서는 label이 있을 때만 실행
   pull_request:
-    branches: [ develop, master ]
+    types: [opened, synchronize, reopened, labeled]
 
 # 동일 브랜치/PR에서 새 푸시 시 이전 실행 취소
 concurrency:
@@ -16,11 +30,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # PR에서는 'integration-test' label이 있을 때만 실행
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'integration-test'))
+
     permissions:
       contents: read
       checks: write
       pull-requests: write
-    
+
     steps:
     - uses: actions/checkout@v4
       
@@ -60,8 +80,18 @@ jobs:
         
     - name: Run Unit Tests
       run: ./gradlew test --continue
-      
-    - name: Run Integration Tests
+
+    - name: Run Integration Tests (excluding Performance)
+      if: ${{ !inputs.run_performance_tests }}
+      run: |
+        ./gradlew integrationTest --continue \
+          --tests '*' \
+          --tests '!*PerformanceTest'
+      env:
+        TESTCONTAINERS_RYUK_DISABLED: true
+
+    - name: Run Integration Tests (including Performance)
+      if: ${{ inputs.run_performance_tests }}
       run: ./gradlew integrationTest --continue
       env:
         TESTCONTAINERS_RYUK_DISABLED: true

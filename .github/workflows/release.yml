@@ -35,7 +35,7 @@ jobs:
   validate:
     name: Validate Release
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     outputs:
       version: ${{ steps.version.outputs.version }}
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
@@ -78,8 +78,18 @@ jobs:
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Start Docker
+        run: |
+          sudo systemctl start docker
+          sudo docker info
+
       - name: Run tests
         run: ./gradlew test
+
+      - name: Run Integration Tests (including Performance)
+        run: ./gradlew integrationTest --continue
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
 
   build:
     name: Build Release Artifacts
