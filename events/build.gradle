@@ -4,9 +4,13 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'groovy'
     apply plugin: 'net.nemerosa.versioning'
-    apply plugin: 'com.github.johnrengelman.shadow'
     apply plugin: 'org.jlleitschuh.gradle.ktlint'
     apply plugin: 'io.gitlab.arturbosch.detekt'
+
+    // Only apply Shadow plugin to event listener modules (not common)
+    if (!project.name.endsWith('-common')) {
+        apply plugin: 'com.github.johnrengelman.shadow'
+    }
 
     jar {
         from {
