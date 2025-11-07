@@ -68,7 +68,8 @@ task integrationTest(type: Test) {
     }
 }
 
-check.dependsOn integrationTest
+// Integration Test는 기본 check에서 제외 (통합 테스트 미구현)
+// check.dependsOn integrationTest 제거됨
 
 // Production Build Configuration
 apply plugin: 'com.github.johnrengelman.shadow'
@@ -109,7 +110,7 @@ task productionBuild {
     group = 'build'
     description = 'Builds production-ready JAR for Keycloak deployment'
 
-    dependsOn clean, test, integrationTest, shadowJar
+    dependsOn clean, test, shadowJar
 
     doLast {
         def jarFile = shadowJar.archiveFile.get().asFile
