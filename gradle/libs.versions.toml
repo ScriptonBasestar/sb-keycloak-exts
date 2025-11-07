@@ -10,7 +10,11 @@ keycloak = "26.0.7"
 
 # Build Tools
 gradle = "9.2"
-shadow = "8.1.1"
+# Shadow plugin upgraded to 9.x series for Gradle 9.2 compatibility
+# Plugin ID changed from com.github.johnrengelman.shadow to com.gradleup.shadow
+# See: https://github.com/GradleUp/shadow
+# Updated: 2025-11-07 to latest stable version 9.2.2
+shadow = "9.2.2"
 asciidoctor = "4.0.5"
 protobuf = "0.9.5"
 nemerosa-versioning = "3.1.0"
@@ -18,13 +22,15 @@ nemerosa-versioning = "3.1.0"
 # Code Quality
 ktlint-plugin = "13.1.0"
 ktlint = "1.7.1"
-# WARNING: Detekt 1.23.7 only supports Kotlin 2.0.21, incompatible with Kotlin 2.2.21
+# WARNING: Detekt 1.23.8 still has Kotlin 2.2.21 compatibility issues
 # TEMPORARY FIX: Detekt disabled in builds until 2.0.0 stable release
+# - Updated to 1.23.8 (2025-02-21) but still incompatible
 # - 2.0.0-alpha.1 is available but not production-ready
 # - Use: ./gradlew build -x detekt
 # - Monitor: https://github.com/detekt/detekt/releases
-detekt = "1.23.7"
-dependency-check = "11.1.0"
+detekt = "1.23.8"
+# OWASP Dependency Check updated from 11.1.0 to 12.1.8
+dependency-check = "12.1.8"
 
 # Testing
 junit = "5.12.2"
@@ -128,7 +134,8 @@ kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
 kotlin-noarg = { id = "org.jetbrains.kotlin.plugin.noarg", version.ref = "kotlin" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
-shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
+# Shadow plugin migrated to GradleUp organization
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 asciidoctor = { id = "org.asciidoctor.jvm.convert", version.ref = "asciidoctor" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobuf" }
 nemerosa-versioning = { id = "net.nemerosa.versioning", version.ref = "nemerosa-versioning" }

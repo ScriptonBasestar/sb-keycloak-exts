@@ -69,10 +69,10 @@ task integrationTest(type: Test) {
 // check.dependsOn integrationTest 제거됨
 
 // Production Build Configuration
-apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'com.gradleup.shadow'
 
 shadowJar {
-    archiveClassifier.set('')
+    archiveClassifier.set('all')
     archiveBaseName.set('keycloak-rabbitmq-event-listener')
 
     mergeServiceFiles()

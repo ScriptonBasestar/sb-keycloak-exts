@@ -5,16 +5,12 @@ subprojects {
     apply plugin: 'groovy'
     apply plugin: 'net.nemerosa.versioning'
     apply plugin: 'org.jlleitschuh.gradle.ktlint'
-    apply plugin: 'io.gitlab.arturbosch.detekt'
+    // NOTE: Detekt temporarily disabled due to Kotlin 2.2.21 incompatibility
+    // apply plugin: 'io.gitlab.arturbosch.detekt'
 
     // Only apply Shadow plugin to event listener modules (not common)
     if (!project.name.endsWith('-common')) {
-        apply plugin: 'com.github.johnrengelman.shadow'
-
-        // Configure Shadow JAR
-        shadowJar {
-            // Keep '-all' suffix (archiveClassifier defaults to 'all')
-        }
+        apply plugin: 'com.gradleup.shadow'
 
         // Make assemble task build Shadow JAR
         tasks.named('assemble') {
@@ -68,18 +64,19 @@ subprojects {
         }
     }
 
-    detekt {
-        buildUponDefaultConfig = true
-        allRules = false
-        config = files("$rootDir/config/detekt/detekt.yml")
-        source = files("src/main/kotlin", "src/test/kotlin")
-        ignoreFailures = true
-        reports {
-            html.enabled = true
-            xml.enabled = true
-            txt.enabled = true
-        }
-    }
+    // Detekt configuration (currently disabled)
+    // detekt {
+    //     buildUponDefaultConfig = true
+    //     allRules = false
+    //     config = files("$rootDir/config/detekt/detekt.yml")
+    //     source = files("src/main/kotlin", "src/test/kotlin")
+    //     ignoreFailures = true
+    //     reports {
+    //         html.enabled = true
+    //         xml.enabled = true
+    //         txt.enabled = true
+    //     }
+    // }
 
     apply from: rootProject.file("gradle/publish.gradle")
 }

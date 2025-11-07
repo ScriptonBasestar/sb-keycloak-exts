@@ -72,17 +72,14 @@ task integrationTest(type: Test) {
 // check.dependsOn integrationTest 제거됨
 
 // Production Build Configuration
-apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'com.gradleup.shadow'
 
 shadowJar {
-    archiveClassifier.set('')
+    archiveClassifier.set('all')
     archiveBaseName.set('keycloak-aws-event-listener')
 
-    // Keycloak 플러그인 규칙에 따른 JAR 구성
-    exclude 'META-INF/*.SF'
-    exclude 'META-INF/*.DSA'
-    exclude 'META-INF/*.RSA'
-    exclude 'META-INF/MANIFEST.MF'
+    // Merge service files to avoid conflicts
+    mergeServiceFiles()
 
     // AWS SDK와 Jackson 라이브러리 포함
     dependencies {
