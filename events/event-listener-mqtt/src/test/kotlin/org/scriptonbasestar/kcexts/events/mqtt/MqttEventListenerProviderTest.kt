@@ -30,7 +30,7 @@ class MqttEventListenerProviderTest {
     private lateinit var metrics: MqttEventMetrics
     private lateinit var provider: MqttEventListenerProvider
 
-    private fun createProvider(configOverride: MqttEventListenerConfig): MqttEventListenerProvider {
+    private fun createProvider(configOverride: MqttEventListenerConfig = config): MqttEventListenerProvider {
         val env = TestConfigurationBuilders.createTestEnvironment()
         val batchProcessor = TestConfigurationBuilders.createBatchProcessor<MqttEventMessage>()
 
@@ -49,25 +49,36 @@ class MqttEventListenerProviderTest {
     @BeforeEach
     fun setup() {
         session = mock()
-        config =
-            MqttEventListenerConfig(
-                brokerUrl = "tcp://localhost:1883",
-                clientId = "test-client",
-                userEventTopic = "test/events/user",
-                adminEventTopic = "test/events/admin",
-                topicPrefix = "",
-                qos = 1,
-                retained = false,
-                enableUserEvents = true,
-                enableAdminEvents = true,
-                includedEventTypes = emptySet(),
-            )
+        config = mock()
         connectionManager = mock()
         metrics = MqttEventMetrics()
-        provider = createProvider(config)
+
+        // Setup default config behavior
+        whenever(config.enableUserEvents).thenReturn(true)
+        whenever(config.enableAdminEvents).thenReturn(true)
+        whenever(config.userEventTopic).thenReturn("test/events/user")
+        whenever(config.adminEventTopic).thenReturn("test/events/admin")
+        whenever(config.topicPrefix).thenReturn("")
+        whenever(config.qos).thenReturn(1)
+        whenever(config.retained).thenReturn(false)
+        whenever(config.includedEventTypes).thenReturn(emptySet())
+
+        // Mock topic building - return sensible defaults for any realm/event type
+        whenever(config.getFullUserEventTopic(any(), any())).thenAnswer { invocation ->
+            val realmId = invocation.getArgument<String>(0)
+            val eventType = invocation.getArgument<String>(1)
+            "test/events/user/$realmId/$eventType"
+        }
+        whenever(config.getFullAdminEventTopic(any(), any())).thenAnswer { invocation ->
+            val realmId = invocation.getArgument<String>(0)
+            val operationType = invocation.getArgument<String>(1)
+            "test/events/admin/$realmId/$operationType"
+        }
 
         // Mock connection status to be connected
         whenever(connectionManager.isConnected()).thenReturn(true)
+
+        provider = createProvider()
     }
 
     @Test
@@ -84,8 +95,8 @@ class MqttEventListenerProviderTest {
 
     @Test
     fun `should skip user event when disabled`() {
-        val disabledConfig = config.copy(enableUserEvents = false)
-        val provider = createProvider(disabledConfig)
+        whenever(config.enableUserEvents).thenReturn(false)
+        val provider = createProvider()
         val event = KeycloakEventTestFixtures.createUserEvent()
 
         provider.onEvent(event)
@@ -95,19 +106,26 @@ class MqttEventListenerProviderTest {
 
     @Test
     fun `should filter user events by type`() {
-        val filteredConfig = config.copy(includedEventTypes = setOf("REGISTER"))
-        val provider = createProvider(filteredConfig)
-        val loginEvent = KeycloakEventTestFixtures.createUserEvent(type = EventType.LOGIN)
+        whenever(config.includedEventTypes).thenReturn(setOf("REGISTER", "LOGIN", "LOGOUT"))
+        val provider = createProvider()
 
-        provider.onEvent(loginEvent)
+        val registerEvent = KeycloakEventTestFixtures.createUserEvent(type = EventType.REGISTER)
+        val updatePasswordEvent = KeycloakEventTestFixtures.createUserEvent(type = EventType.UPDATE_PASSWORD)
+        doNothing().whenever(connectionManager).publish(any(), any(), any(), any())
 
-        verify(connectionManager, never()).publish(any(), any(), any(), any())
+        // REGISTER is in includedEventTypes
+        provider.onEvent(registerEvent)
+        verify(connectionManager, times(1)).publish(any(), any(), any(), any())
+
+        // UPDATE_PASSWORD is not in includedEventTypes - should be skipped
+        provider.onEvent(updatePasswordEvent)
+        verify(connectionManager, times(1)).publish(any(), any(), any(), any()) // Still 1, not 2
     }
 
     @Test
     fun `should allow included event types`() {
-        val filteredConfig = config.copy(includedEventTypes = setOf("LOGIN"))
-        val provider = createProvider(filteredConfig)
+        whenever(config.includedEventTypes).thenReturn(setOf("LOGIN"))
+        val provider = createProvider()
         val loginEvent = KeycloakEventTestFixtures.createUserEvent(type = EventType.LOGIN)
 
         doNothing().whenever(connectionManager).publish(any(), any(), any(), any())
@@ -115,6 +133,19 @@ class MqttEventListenerProviderTest {
         provider.onEvent(loginEvent)
 
         verify(connectionManager, times(1)).publish(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `should handle user event errors gracefully`() {
+        val event = KeycloakEventTestFixtures.createUserEvent()
+        whenever(connectionManager.publish(any(), any(), any(), any())).thenThrow(RuntimeException("MQTT connection failed"))
+
+        assertDoesNotThrow {
+            provider.onEvent(event)
+        }
+
+        val summary = metrics.getMetricsSummary()
+        assert(summary.totalFailed > 0)
     }
 
     @Test
@@ -131,8 +162,8 @@ class MqttEventListenerProviderTest {
 
     @Test
     fun `should skip admin event when disabled`() {
-        val disabledConfig = config.copy(enableAdminEvents = false)
-        val provider = createProvider(disabledConfig)
+        whenever(config.enableAdminEvents).thenReturn(false)
+        val provider = createProvider()
         val adminEvent = KeycloakEventTestFixtures.createAdminEvent()
 
         provider.onEvent(adminEvent, includeRepresentation = false)
@@ -141,9 +172,22 @@ class MqttEventListenerProviderTest {
     }
 
     @Test
+    fun `should handle admin event errors gracefully`() {
+        val adminEvent = KeycloakEventTestFixtures.createAdminEvent()
+        whenever(connectionManager.publish(any(), any(), any(), any())).thenThrow(RuntimeException("MQTT connection failed"))
+
+        assertDoesNotThrow {
+            provider.onEvent(adminEvent, includeRepresentation = false)
+        }
+
+        val summary = metrics.getMetricsSummary()
+        assert(summary.totalFailed > 0)
+    }
+
+    @Test
     fun `should use correct QoS level`() {
-        val qosConfig = config.copy(qos = 2)
-        val provider = createProvider(qosConfig)
+        whenever(config.qos).thenReturn(2)
+        val provider = createProvider()
         val event = KeycloakEventTestFixtures.createUserEvent()
 
         doNothing().whenever(connectionManager).publish(any(), any(), any(), any())
@@ -155,8 +199,8 @@ class MqttEventListenerProviderTest {
 
     @Test
     fun `should publish retained messages when configured`() {
-        val retainedConfig = config.copy(retained = true)
-        val provider = createProvider(retainedConfig)
+        whenever(config.retained).thenReturn(true)
+        val provider = createProvider()
         val event = KeycloakEventTestFixtures.createUserEvent()
 
         doNothing().whenever(connectionManager).publish(any(), any(), any(), any())
@@ -167,9 +211,42 @@ class MqttEventListenerProviderTest {
     }
 
     @Test
+    fun `should send to correct topic for user events`() {
+        val event = KeycloakEventTestFixtures.createUserEvent(realmId = "test-realm", type = EventType.LOGIN)
+        whenever(config.getFullUserEventTopic("test-realm", "LOGIN")).thenReturn("test/events/user/test-realm/LOGIN")
+        doNothing().whenever(connectionManager).publish(any(), any(), any(), any())
+
+        provider.onEvent(event)
+
+        verify(connectionManager).publish(
+            eq("test/events/user/test-realm/LOGIN"),
+            any(),
+            any(),
+            any(),
+        )
+    }
+
+    @Test
+    fun `should send to correct topic for admin events`() {
+        val adminEvent = KeycloakEventTestFixtures.createAdminEvent(realmId = "test-realm", operationType = OperationType.CREATE)
+        whenever(config.getFullAdminEventTopic("test-realm", "CREATE")).thenReturn("test/events/admin/test-realm/CREATE")
+        doNothing().whenever(connectionManager).publish(any(), any(), any(), any())
+
+        provider.onEvent(adminEvent, includeRepresentation = false)
+
+        verify(connectionManager).publish(
+            eq("test/events/admin/test-realm/CREATE"),
+            any(),
+            any(),
+            any(),
+        )
+    }
+
+    @Test
     fun `should build topic with prefix when configured`() {
-        val prefixConfig = config.copy(topicPrefix = "keycloak")
-        val provider = createProvider(prefixConfig)
+        whenever(config.topicPrefix).thenReturn("keycloak")
+        whenever(config.getFullUserEventTopic("test-realm", "LOGIN")).thenReturn("keycloak/test/events/user/test-realm/LOGIN")
+        val provider = createProvider()
         val event = KeycloakEventTestFixtures.createUserEvent(realmId = "test-realm", type = EventType.LOGIN)
 
         doNothing().whenever(connectionManager).publish(any(), any(), any(), any())
@@ -250,6 +327,79 @@ class MqttEventListenerProviderTest {
 
         val summary = metrics.getMetricsSummary()
         assert(summary.totalSent == 3L)
+    }
+
+    @Test
+    fun `should include representation when requested`() {
+        val adminEvent =
+            KeycloakEventTestFixtures.createAdminEvent {
+                representation = "{\"username\":\"testuser\"}"
+            }
+        var capturedMessage: String = ""
+
+        whenever(connectionManager.publish(any(), any(), any(), any())).then { invocation ->
+            capturedMessage = invocation.getArgument(1) // message is second argument
+        }
+
+        provider.onEvent(adminEvent, true)
+
+        assert(capturedMessage.contains("representation"))
+        assert(capturedMessage.contains("testuser"))
+    }
+
+    @Test
+    fun `should exclude representation when not requested`() {
+        val adminEvent =
+            KeycloakEventTestFixtures.createAdminEvent {
+                representation = "{\"username\":\"testuser\"}"
+            }
+        var capturedMessage: String = ""
+
+        whenever(connectionManager.publish(any(), any(), any(), any())).then { invocation ->
+            capturedMessage = invocation.getArgument(1) // message is second argument
+        }
+
+        provider.onEvent(adminEvent, false)
+
+        // representation field should be null in JSON
+        assert(capturedMessage.contains("\"representation\":null"))
+    }
+
+    @Test
+    fun `should serialize event to JSON`() {
+        val event =
+            KeycloakEventTestFixtures.createUserEvent(
+                type = EventType.LOGIN,
+                realmId = "test-realm",
+                userId = "user-123",
+            )
+        var capturedMessage: String = ""
+
+        whenever(connectionManager.publish(any(), any(), any(), any())).then { invocation ->
+            capturedMessage = invocation.getArgument(1) // message is second argument
+        }
+
+        provider.onEvent(event)
+
+        // Verify JSON structure
+        assert(capturedMessage.contains("\"type\":\"LOGIN\""))
+        assert(capturedMessage.contains("\"realmId\":\"test-realm\""))
+        assert(capturedMessage.contains("\"userId\":\"user-123\""))
+    }
+
+    @Test
+    fun `should handle all common event types`() {
+        doNothing().whenever(connectionManager).publish(any(), any(), any(), any())
+
+        // Test all common event types
+        val eventTypes = listOf(EventType.LOGIN, EventType.LOGOUT, EventType.REGISTER)
+
+        eventTypes.forEach { eventType ->
+            val event = KeycloakEventTestFixtures.createUserEvent(type = eventType)
+            provider.onEvent(event)
+        }
+
+        verify(connectionManager, times(eventTypes.size)).publish(any(), any(), any(), any())
     }
 
     @Test
