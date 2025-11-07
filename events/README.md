@@ -87,6 +87,58 @@ Keycloak에서 발생하는 사용자/관리자 이벤트를 다양한 메시징
 ```
 생성된 JAR는 각 모듈의 `build/libs/`에 위치하며 Keycloak `providers/` 디렉터리에 배치 후 `kc.sh build` → `kc.sh start` 순으로 반영합니다.
 
+## 테스트 (Integration Tests)
+
+Event Listener 모듈들은 실제 메시징 인프라와 통합하여 E2E 동작을 검증하는 TestContainers 기반 통합 테스트를 제공합니다.
+
+### 통합 테스트 실행
+
+**필수 요구사항:** Docker가 실행 중이어야 합니다.
+
+```bash
+# Kafka 통합 테스트
+./gradlew :events:event-listener-kafka:integrationTest
+
+# RabbitMQ 통합 테스트
+./gradlew :events:event-listener-rabbitmq:integrationTest
+
+# Redis 통합 테스트
+./gradlew :events:event-listener-redis:integrationTest
+
+# NATS 통합 테스트
+./gradlew :events:event-listener-nats:integrationTest
+```
+
+### 테스트 시나리오
+
+각 모듈의 통합 테스트는 다음을 검증합니다:
+
+1. **컨테이너 시작 및 연결**: 메시징 시스템 컨테이너가 정상적으로 시작되고 연결되는지 확인
+2. **메시지 발행/구독**: 메시지를 발행하고 정상적으로 수신하는지 검증
+3. **서버 정보 확인**: 메시징 시스템의 버전, 설정 등 메타데이터 조회
+4. **Keycloak Realm 설정**: 이벤트 리스너 설정이 Realm Attributes에 올바르게 반영되는지 확인
+5. **E2E 이벤트 전송**: Keycloak에서 사용자를 생성하고, 발생한 이벤트가 메시징 시스템으로 전달되는지 검증
+6. **성능 테스트**: 대량의 메시지를 전송하고 처리량(msg/sec)이 기준치를 충족하는지 확인
+
+### 성능 기준 (Performance Thresholds)
+
+| 모듈 | 최소 처리량 | 비고 |
+|------|------------|------|
+| Kafka | 테스트 미포함 | 고성능 스트리밍 플랫폼 |
+| RabbitMQ | 50 msg/sec | AMQP 프로토콜 오버헤드 |
+| Redis | 100 msg/sec | 인메모리 처리로 빠름 |
+| NATS | 200 msg/sec | 경량 프로토콜, 매우 빠름 |
+
+### CI/CD 통합
+
+통합 테스트는 CI/CD 파이프라인에서 선택적으로 실행됩니다:
+
+- **자동 실행**: `release/**` 브랜치 push 또는 `integration-test` 라벨이 있는 PR
+- **수동 실행**: GitHub Actions → "Integration Tests" 워크플로우 → "Run workflow" 클릭
+- **일반 빌드**: 기본 `./gradlew build`에는 포함되지 않음 (Docker 환경이 필요하므로)
+
+통합 테스트는 실제 컨테이너를 사용하므로 시간이 오래 걸릴 수 있습니다(2-5분/모듈). 개발 중에는 단위 테스트를 먼저 실행하고, 릴리즈 전에 통합 테스트를 실행하는 것을 권장합니다.
+
 ## 추가 자료
 - `events/IMPLEMENTATION_SUMMARY.md` — 최신 구현 현황과 리스너별 적용 범위
 - `events/RESILIENCE_PATTERNS.md` — 회복력 패턴 심층 설명 및 운영 팁

@@ -112,9 +112,9 @@ https://your-keycloak-domain.com/realms/{realm}/broker/{provider}/endpoint
 
 ## 테스트 (Testing)
 
-### 테스트 실행
+### 단위 테스트 (Unit Tests)
 
-모든 테스트 실행:
+모든 단위 테스트 실행:
 ```bash
 ./gradlew test
 ```
@@ -128,12 +128,45 @@ https://your-keycloak-domain.com/realms/{realm}/broker/{provider}/endpoint
 ./gradlew :idps:idp-github:test
 ```
 
+### 통합 테스트 (Integration Tests)
+
+Event Listener 모듈들은 TestContainers 기반 통합 테스트를 제공합니다:
+
+**통합 테스트 실행 (Docker 필요):**
+```bash
+# Kafka 통합 테스트
+./gradlew :events:event-listener-kafka:integrationTest
+
+# RabbitMQ 통합 테스트
+./gradlew :events:event-listener-rabbitmq:integrationTest
+
+# Redis 통합 테스트
+./gradlew :events:event-listener-redis:integrationTest
+
+# NATS 통합 테스트
+./gradlew :events:event-listener-nats:integrationTest
+```
+
+**주의사항:**
+- 통합 테스트는 Docker가 실행 중이어야 합니다
+- TestContainers가 자동으로 컨테이너를 시작/중지합니다
+- CI/CD 파이프라인에서는 릴리즈 시에만 자동 실행됩니다
+- 수동 실행 시: GitHub Actions → integration-tests 워크플로우 → "Run workflow" 클릭
+
 ### 테스트 커버리지
 
+**Identity Providers (단위 테스트):**
 - OAuth2 플로우 테스트
 - 사용자 프로필 매핑 테스트
 - 에러 처리 시나리오 테스트
 - JSON 파싱 및 데이터 변환 테스트
+
+**Event Listeners (통합 테스트):**
+- 컨테이너 시작 및 연결 확인
+- 메시지 발행/구독 테스트
+- Keycloak Realm 설정 검증
+- 성능 테스트 (메시지 처리량)
+- Keycloak 이벤트 → 메시징 시스템 E2E 테스트
 
 ## 프로젝트 구조 (Project Structure)
 
