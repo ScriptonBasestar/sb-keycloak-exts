@@ -3,21 +3,22 @@ name: Publish Snapshot JAR
 on:
   push:
     branches:
-      - 'release'
+      - develop
 
 # 동일 브랜치에서 새 푸시 시 이전 실행 취소
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-#env:
-#  REGISTRY: ghcr.io
-#  IMAGE_NAME: ${{ github.repository }}
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/keycloak-kafka-event-listener
 
 jobs:
-  build-and-deploy-package:
+  build-and-test:
+    name: Build and Test Snapshot
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
@@ -30,7 +31,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: 21
           cache: gradle
 
       - name: Validate Gradle wrapper
@@ -41,10 +42,53 @@ jobs:
         with:
           cache-read-only: false
 
-      - name: Execute Gradle build
-        run: ./gradlew build
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')-SNAPSHOT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building snapshot version: $VERSION"
 
-      - name: Publish Gradle package
-        run: ./gradlew publish
+      - name: Build JAR
+        run: ./gradlew clean build shadowJar -x test
+
+      - name: Run tests
+        run: ./gradlew test
+
+      - name: Upload Snapshot artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-artifacts
+          path: |
+            events/event-listener-kafka/build/libs/*.jar
+            idps/*/build/libs/*-all.jar
+          retention-days: 7
+
+      - name: Publish Snapshot to GitHub Packages
+        run: ./gradlew publish -Pversion=${{ steps.version.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image (Snapshot)
+        if: success()
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push snapshot Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:snapshot
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

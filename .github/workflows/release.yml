@@ -1,25 +1,26 @@
 name: Release
 
 on:
+  # Case 3: 태그 push (v*.*.*)
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
+
+  # Case 4: 웹에서 Release 생성 (GitHub Release UI)
+  release:
+    types: [published, created]
+
+  # Manual dispatch (optional)
   workflow_dispatch:
     inputs:
-      release_type:
-        description: 'Release type'
+      version:
+        description: 'Release version (e.g., 1.0.0)'
         required: true
-        default: 'patch'
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-          - rc
-      auto_publish:
-        description: 'Auto publish release'
-        required: true
-        default: true
+        type: string
+      prerelease:
+        description: 'Is this a pre-release?'
+        required: false
+        default: false
         type: boolean
 
 # 동일 태그/릴리즈에서 재실행 방지
@@ -61,22 +62,29 @@ jobs:
         id: version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # Manual release - bump version
-            ./scripts/release/version-manager.sh bump ${{ github.event.inputs.release_type }}
-            VERSION=$(./scripts/release/version-manager.sh current)
+            # Manual workflow dispatch
+            VERSION="${{ github.event.inputs.version }}"
+            IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            # GitHub Release created from web UI
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+            IS_PRERELEASE="${{ github.event.release.prerelease }}"
           else
-            # Tag-based release - extract from tag
-            VERSION=${GITHUB_REF#refs/tags/v}
+            # Tag-based release (git tag v1.0.0)
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            if [[ "$VERSION" == *"-"* ]]; then
+              IS_PRERELEASE="true"
+            else
+              IS_PRERELEASE="false"
+            fi
           fi
-          
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          
-          # Check if pre-release
-          if [[ "$VERSION" == *"-"* ]]; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
-          fi
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+
+          echo "🚀 Building release version: $VERSION"
+          echo "📦 Pre-release: $IS_PRERELEASE"
 
       - name: Start Docker
         run: |
@@ -244,28 +252,28 @@ jobs:
           fi
           cd ..
 
-      - name: Create GitHub Release
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.validate.outputs.version }}
           name: Release v${{ needs.validate.outputs.version }}
           body: |
             ## Keycloak Extensions ${{ needs.validate.outputs.version }}
-            
+
             ### What's New
-            
+
             #### Keycloak Kafka Event Listener
             - Advanced event streaming to Apache Kafka
             - Real-time monitoring and alerting
             - Performance optimization and circuit breaker
             - Production-ready Docker and Kubernetes deployment
-            
+
             #### Identity Provider Extensions
             - Kakao, LINE, Naver identity provider support
             - Enhanced security and authentication
-            
+
             ### Installation
-            
+
             #### Kafka Event Listener
             ```bash
             # Download and install
@@ -273,22 +281,23 @@ jobs:
             cp keycloak-kafka-event-listener-${{ needs.validate.outputs.version }}.jar $KEYCLOAK_HOME/providers/
             $KEYCLOAK_HOME/bin/kc.sh build
             ```
-            
+
             #### Docker
             ```bash
             docker pull ghcr.io/${{ github.repository }}/keycloak-kafka-event-listener:${{ needs.validate.outputs.version }}
             ```
-            
+
             ### Documentation
             - [Installation Guide](docs/INSTALLATION.md)
             - [Configuration Reference](docs/CONFIGURATION.md)
             - [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
-            
+
             ### Changelog
             Please see the [CHANGELOG](CHANGELOG.md) for complete details.
           files: release-assets/*
           prerelease: ${{ needs.validate.outputs.is_prerelease == 'true' }}
           generate_release_notes: true
           append_body: true
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

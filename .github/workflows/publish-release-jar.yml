@@ -1,31 +1,30 @@
-name: Publish jar
+name: Validate Master Branch
 
 on:
   push:
-    tags:
-      - '*.*.*'
+    branches:
+      - master
 
-# 동일 태그에서 재실행 방지 (일반적으로 태그는 한 번만 실행)
+# 동일 브랜치에서 새 푸시 시 이전 실행 취소
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
-  publish:
+  validate-release-candidate:
+    name: Validate Release Candidate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-#    if: github-repository == 'scriptonbasestar/sb-keycloak-exts'
+    timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: 'main'
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: 21
           cache: gradle
 
       - name: Validate Gradle wrapper
@@ -36,3 +35,44 @@ jobs:
         with:
           cache-read-only: false
           gradle-home-cache-cleanup: true
+
+      - name: Start Docker
+        run: |
+          sudo systemctl start docker
+          sudo docker info
+
+      - name: Run full build
+        run: ./gradlew clean build shadowJar
+
+      - name: Run unit tests
+        run: ./gradlew test
+
+      - name: Run integration tests
+        run: ./gradlew integrationTest --continue
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+      - name: Run code quality checks
+        run: |
+          ./gradlew ktlintCheck
+          ./gradlew detekt || true
+
+      - name: Run dependency security scan
+        run: ./gradlew dependencyCheckAnalyze || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            **/build/test-results/**/*.xml
+            **/build/reports/**
+
+      - name: Notify validation success
+        if: success()
+        run: |
+          echo "✅ Master branch validation passed. Ready for release."
+          echo "To create a release, use one of:"
+          echo "1. Create a version tag: git tag v1.0.0 && git push origin v1.0.0"
+          echo "2. Create a GitHub Release from the web UI"
