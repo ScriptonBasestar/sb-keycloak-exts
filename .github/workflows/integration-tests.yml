@@ -51,9 +51,7 @@ jobs:
         distribution: 'temurin'
         
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-      with:
-        gradle-version: 8.8
+      uses: gradle/actions/setup-gradle@v4
         
     - name: Cache Gradle packages
       uses: actions/cache@v4

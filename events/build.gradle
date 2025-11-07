@@ -10,13 +10,16 @@ subprojects {
     // Only apply Shadow plugin to event listener modules (not common)
     if (!project.name.endsWith('-common')) {
         apply plugin: 'com.github.johnrengelman.shadow'
-    }
 
-    jar {
-        from {
-            configurations.bundleLib.collect { it.isDirectory() ? it : zipTree(it) }
+        // Configure Shadow JAR
+        shadowJar {
+            // Keep '-all' suffix (archiveClassifier defaults to 'all')
         }
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+        // Make assemble task build Shadow JAR
+        tasks.named('assemble') {
+            dependsOn tasks.named('shadowJar')
+        }
     }
 
     dependencies {
