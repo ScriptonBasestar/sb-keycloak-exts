@@ -39,6 +39,20 @@ Keycloak 이벤트를 다양한 메시징 시스템으로 실시간 스트리밍
 - **High Performance**: 비동기 처리, 배치 처리, 연결 풀링
 - **Production-Ready**: 완전한 에러 처리, 로깅, 테스트 커버리지
 
+### 🎨 기업용 로그인 테마
+
+깔끔하고 모던한 기업 환경용 Keycloak 로그인 테마 제공:
+
+#### Corporate Clean Theme
+- **미니멀 디자인**: 깔끔하고 전문적인 UI
+- **반응형 지원**: 데스크톱, 태블릿, 모바일 완벽 대응
+- **다국어 지원**: 영어, 한국어, 일본어
+- **소셜 로그인 스타일링**: Kakao, Naver, Google, GitHub, LINE 등
+- **접근성**: WCAG 2.1 AA 준수
+- **커스터마이징**: 색상, 로고, 배경 쉽게 변경 가능
+
+자세한 내용은 [테마 문서](themes/README.md)를 참조하세요.
+
 ## 주요 기능 (Features)
 
 - 각 플랫폼과의 완전한 OAuth2 통합
@@ -88,6 +102,10 @@ Keycloak 이벤트를 다양한 메시징 시스템으로 실시간 스트리밍
    - `events/event-listener-aws/build/libs/keycloak-aws-event-listener-*-all.jar`
    - `events/event-listener-azure/build/libs/keycloak-azure-event-listener-*-all.jar`
 
+   **Corporate Themes:**
+   - `themes/build/libs/keycloak-theme-corporate-clean.jar` 🎨
+   - `themes/build/libs/keycloak-theme-corporate-base.jar`
+
 ### 설치
 
 1. 원하는 확장 JAR를 Keycloak에 복사:
@@ -97,6 +115,9 @@ Keycloak 이벤트를 다양한 메시징 시스템으로 실시간 스트리밍
 
    # Event Listeners (선택사항)
    cp events/event-listener-*/build/libs/*-all.jar $KEYCLOAK_HOME/providers/
+
+   # Corporate Themes (선택사항) 🎨
+   cp themes/build/libs/*.jar $KEYCLOAK_HOME/providers/
    ```
 
 2. Keycloak 빌드 및 재시작:
@@ -104,6 +125,9 @@ Keycloak 이벤트를 다양한 메시징 시스템으로 실시간 스트리밍
    $KEYCLOAK_HOME/bin/kc.sh build
    $KEYCLOAK_HOME/bin/kc.sh start
    ```
+
+3. (테마 사용 시) Keycloak 관리 콘솔에서 테마 설정:
+   - Realm Settings → Themes → Login Theme: `corporate-clean` 선택
 
 ## 설정 가이드 (Configuration Guide)
 

@@ -1,0 +1,123 @@
+plugins {
+    id 'base'
+    id 'maven-publish'
+    alias(libs.plugins.nemerosa.versioning)
+}
+
+description = 'Keycloak Extensions - Corporate Themes'
+
+// Corporate Base Theme JAR
+tasks.register('corporateBaseJar', Jar) {
+    archiveBaseName.set('keycloak-theme-corporate-base')
+    archiveClassifier.set('')
+    destinationDirectory.set(file("${layout.buildDirectory.get()}/libs"))
+
+    from('corporate-base') {
+        into 'theme/corporate-base'
+    }
+
+    manifest {
+        attributes(
+            'Implementation-Title': 'Keycloak Corporate Base Theme',
+            'Implementation-Version': project.version,
+            'Built-By': System.getProperty('user.name'),
+            'Built-Date': new Date().format('yyyy-MM-dd HH:mm:ss'),
+            'Keycloak-Version': libs.versions.keycloak.get()
+        )
+    }
+}
+
+// Corporate Clean Theme JAR
+tasks.register('corporateCleanJar', Jar) {
+    archiveBaseName.set('keycloak-theme-corporate-clean')
+    archiveClassifier.set('')
+    destinationDirectory.set(file("${layout.buildDirectory.get()}/libs"))
+
+    from('corporate-clean') {
+        into 'theme/corporate-clean'
+    }
+
+    // Include base theme as dependency
+    from('corporate-base') {
+        into 'theme/corporate-base'
+    }
+
+    manifest {
+        attributes(
+            'Implementation-Title': 'Keycloak Corporate Clean Theme',
+            'Implementation-Version': project.version,
+            'Built-By': System.getProperty('user.name'),
+            'Built-Date': new Date().format('yyyy-MM-dd HH:mm:ss'),
+            'Keycloak-Version': libs.versions.keycloak.get()
+        )
+    }
+}
+
+// Build all themes
+tasks.register('buildThemes') {
+    group = 'build'
+    description = 'Build all Keycloak theme JARs'
+    dependsOn corporateBaseJar, corporateCleanJar
+}
+
+// Clean theme builds
+clean {
+    delete "${layout.buildDirectory.get()}/libs"
+}
+
+// Default build task
+build {
+    dependsOn buildThemes
+}
+
+// Copy themes to local Keycloak for development
+tasks.register('deployThemesLocal') {
+    group = 'deployment'
+    description = 'Copy theme JARs to local Keycloak providers directory'
+    dependsOn buildThemes
+
+    doLast {
+        def keycloakHome = System.getenv('KEYCLOAK_HOME')
+        if (keycloakHome == null || keycloakHome.isEmpty()) {
+            throw new GradleException('KEYCLOAK_HOME environment variable not set')
+        }
+
+        def providersDir = file("${keycloakHome}/providers")
+        if (!providersDir.exists()) {
+            throw new GradleException("Keycloak providers directory not found: ${providersDir}")
+        }
+
+        copy {
+            from "${layout.buildDirectory.get()}/libs"
+            into providersDir
+            include '*.jar'
+        }
+
+        println "Themes deployed to: ${providersDir}"
+        println "Run: \$KEYCLOAK_HOME/bin/kc.sh build"
+    }
+}
+
+// Publishing configuration
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = "https://maven.pkg.github.com/scriptonbasestar/sb-keycloak-exts"
+            credentials {
+                username = System.getenv("GITHUB_ACTOR") ?: project.properties["GITHUB_ACTOR"]
+                password = System.getenv("GITHUB_TOKEN") ?: project.properties["GITHUB_TOKEN"]
+            }
+        }
+    }
+    publications {
+        corporateBase(MavenPublication) {
+            artifactId = 'keycloak-theme-corporate-base'
+            artifact corporateBaseJar
+        }
+        corporateClean(MavenPublication) {
+            artifactId = 'keycloak-theme-corporate-clean'
+            artifact corporateCleanJar
+        }
+    }
+}

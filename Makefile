@@ -1,7 +1,7 @@
 # Keycloak Extensions Makefile
 # 프로젝트 편의 명령어들을 제공합니다.
 
-.PHONY: help lint format lint-fix build test clean check install-hooks
+.PHONY: help lint format lint-fix build test clean check install-hooks themes
 
 # 기본 타겟
 .DEFAULT_GOAL := help
@@ -19,6 +19,8 @@ help:
 	@echo "  make install-hooks - Git pre-commit 훅 설치"
 	@echo "  make shadow      - Shadow JAR 생성"
 	@echo "  make dependency-check - 의존성 보안 검사"
+	@echo "  make themes      - 테마 JAR 빌드"
+	@echo "  make themes-deploy - 로컬 Keycloak에 테마 배포"
 
 # 코드 포맷팅
 format:
@@ -69,6 +71,22 @@ shadow:
 dependency-check:
 	@echo "🔒 의존성 보안 검사 실행 중..."
 	./gradlew dependencyCheckAnalyze
+
+# 테마 빌드
+themes:
+	@echo "🎨 테마 JAR 빌드 중..."
+	./gradlew :themes:buildThemes
+	@echo "✅ 테마 빌드 완료:"
+	@ls -lh themes/build/libs/*.jar
+
+# 테마 로컬 배포
+themes-deploy:
+	@echo "🚀 로컬 Keycloak에 테마 배포 중..."
+	./gradlew :themes:deployThemesLocal
+	@echo "✅ 테마 배포 완료. 다음 명령어를 실행하세요:"
+	@echo "  cd \$$KEYCLOAK_HOME"
+	@echo "  ./bin/kc.sh build"
+	@echo "  ./bin/kc.sh start"
 
 # Git pre-commit 훅 설치
 install-hooks:
