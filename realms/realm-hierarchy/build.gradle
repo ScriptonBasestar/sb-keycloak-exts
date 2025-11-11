@@ -1,17 +1,77 @@
+// Integration Test Configuration
+sourceSets {
+    integrationTest {
+        kotlin {
+            srcDir 'src/integrationTest/kotlin'
+        }
+        resources {
+            srcDir 'src/integrationTest/resources'
+        }
+        compileClasspath += main.output + test.output
+        runtimeClasspath += main.output + test.output
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+// Duplicate handling strategy for processing resources
+tasks.withType(ProcessResources) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 dependencies {
     // Additional dependencies specific to realm hierarchy
     // (Currently uses parent configuration from realms/build.gradle)
+
+    // Test Dependencies
+    testImplementation libs.bundles.testing
+
+    // Integration Test Dependencies
+    integrationTestImplementation libs.bundles.testing
+    integrationTestImplementation libs.keycloak.admin.client
 }
+
+// Integration Test Task
+task integrationTest(type: Test) {
+    description = 'Runs integration tests for Realm Hierarchy REST API'
+    group = 'verification'
+
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    shouldRunAfter test
+
+    useJUnitPlatform()
+
+    systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
+
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+// Integration Test는 기본 check에서 제외 (수동 또는 릴리즈 시에만 실행)
+// check.dependsOn integrationTest 제거됨
 
 shadowJar {
     archiveBaseName.set('realm-hierarchy')
     archiveClassifier.set('all')
 
+    // Merge service files to avoid conflicts
+    mergeServiceFiles()
+
     manifest {
         attributes(
             'Implementation-Title': 'Keycloak Realm Hierarchy Manager',
             'Implementation-Version': project.version,
-            'Implementation-Vendor': 'ScriptonBasestar'
+            'Implementation-Vendor': 'ScriptonBasestar',
+            'Built-By': System.getProperty('user.name'),
+            'Build-Date': new Date().format('yyyy-MM-dd HH:mm:ss'),
+            'Keycloak-Version': libs.versions.keycloak.get()
         )
     }
 }
