@@ -1,0 +1,29 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.plugin.jpa'
+}
+
+description = 'Keycloak Self-Service API - User registration, profile management, consent, and account deletion'
+
+dependencies {
+    // Parent build.gradle provides common dependencies
+
+    // JPA/Hibernate for Consent Entity
+    compileOnly 'org.hibernate.orm:hibernate-core'
+    compileOnly 'jakarta.persistence:jakarta.persistence-api'
+
+    // Kotlin stdlib
+    implementation libs.kotlin.stdlib
+
+    // Test-specific
+    testImplementation libs.kotlin.test
+    testRuntimeOnly 'com.h2database:h2'  // In-memory DB for tests
+}
+
+shadowJar {
+    archiveBaseName.set('keycloak-self-service-api')
+}
+
+test {
+    useJUnitPlatform()
+}

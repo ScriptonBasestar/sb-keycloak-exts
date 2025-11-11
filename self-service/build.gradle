@@ -1,0 +1,70 @@
+apply plugin: 'base'
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'groovy'
+    apply plugin: 'net.nemerosa.versioning'
+    apply plugin: 'com.gradleup.shadow'
+    apply plugin: 'org.jlleitschuh.gradle.ktlint'
+
+    // Make assemble task build Shadow JAR
+    tasks.named('assemble') {
+        dependsOn tasks.named('shadowJar')
+    }
+
+    dependencies {
+        // Keycloak Dependencies
+        compileOnly libs.keycloak.services
+        compileOnly libs.keycloak.server.spi
+        compileOnly libs.keycloak.server.spi.private
+        compileOnly libs.keycloak.core
+        compileOnly libs.keycloak.common
+        compileOnly libs.keycloak.model.jpa
+
+        // JAX-RS (RESTEasy Reactive - Keycloak provides)
+        compileOnly 'jakarta.ws.rs:jakarta.ws.rs-api:3.1.0'
+        // compileOnly 'org.jboss.resteasy:resteasy-multipart-provider' // Provided by Keycloak
+
+        // JSON Processing
+        implementation libs.bundles.jackson
+        implementation libs.bundles.logging
+
+        configurations.implementation.extendsFrom(configurations.bundleLib)
+
+        // Test Dependencies
+        testImplementation libs.bundles.testing
+        testImplementation libs.bundles.keycloak
+    }
+
+    test {
+        useJUnitPlatform()
+        testLogging {
+            events "passed", "skipped", "failed"
+            exceptionFormat "full"
+        }
+    }
+
+    shadowJar {
+        archiveClassifier.set('all')
+        archiveBaseName.set("keycloak-self-service-${project.name}")
+
+        mergeServiceFiles()
+
+        // Include only Jackson dependencies (RESTEasy provided by Keycloak)
+        dependencies {
+            include(dependency('com.fasterxml.jackson.core:.*'))
+            include(dependency('com.fasterxml.jackson.module:jackson-module-kotlin'))
+            include(dependency('com.fasterxml.jackson.datatype:.*'))
+        }
+
+        manifest {
+            attributes(
+                    'Implementation-Title': 'Keycloak Self-Service API',
+                    'Implementation-Version': project.version,
+                    'Keycloak-Version': libs.versions.keycloak.get()
+            )
+        }
+    }
+
+    apply from: rootProject.file("gradle/publish.gradle")
+}
