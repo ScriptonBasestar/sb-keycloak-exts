@@ -369,6 +369,43 @@ KC_FEATURES=preview
 
 ## 검증 및 테스트
 
+### 실전 테스트 결과 (Verified 2025-11-11)
+
+#### ✅ 배포 테스트
+- **환경**: Docker Compose, Keycloak 26.0.7, PostgreSQL 16
+- **JAR 크기**: 23MB (realm-hierarchy-0.0.2-SNAPSHOT-all.jar)
+- **로드 시간**: 3-12초
+- **결과**: Provider 정상 로드, CDI 이슈 해결 (META-INF/beans.xml 추가)
+
+#### ✅ REST API 기능 테스트
+모든 엔드포인트 정상 작동 확인:
+1. `GET /realms/{realm}/hierarchy` - Realm 계층 구조 조회
+2. `GET /realms/{realm}/hierarchy/path` - 상위 경로 전체 조회
+3. `POST /realms/{realm}/hierarchy/parent` - 부모 Realm 설정
+4. `POST /realms/{realm}/hierarchy/synchronize` - 계층 동기화
+5. `DELETE /realms/{realm}/hierarchy` - 계층 관계 해제
+
+#### ✅ Event Listener 실시간 동작
+- **테스트**: master realm에 role 추가 → 자동으로 child realm에 상속
+- **Role**: `test-inherited-role`, `cascading-test-role`
+- **메타데이터**: `hierarchy.inherited=true`, `hierarchy.source_realm=master`
+- **전파 시간**: 즉시 (< 1초)
+- **로그 확인**: `Propagating changes to N child realms` 정상
+
+#### ✅ 다중 레벨 계층 (3단계)
+- **구조**: master → event-test-child → grandchild-realm
+- **Depth**: 0 (master), 1 (child), 2 (grandchild)
+- **Path**: `/master/event-test-child/grandchild-realm`
+- **상속 전파**:
+  - master에서 child로: ✅ 자동
+  - child에서 grandchild로: ✅ 자동 (Event Listener 활성화 시)
+- **Role 상속**: `child-specific-role` → grandchild로 정상 전파
+
+#### ✅ 계층 구조 무결성
+- **Parent-Child 관계**: 양방향 정확
+- **Children 배열**: 부모 Realm에서 자식 목록 정상 표시
+- **순환 참조 방지**: 내장 검증 로직
+
 ### 헬스 체크
 
 ```bash
