@@ -82,18 +82,29 @@ class EmailNotificationService(
     /**
      * Send password changed notification
      */
-    fun sendPasswordChangedNotification(user: UserModel): Boolean {
+    fun sendPasswordChangedEmail(
+        user: UserModel,
+        ipAddress: String? = null,
+    ): Boolean {
         val realm = session.context.realm
+        val baseUri = session.context.uri.baseUri
+        val securityLink = "${baseUri}realms/${realm.name}/account"
 
         return try {
             emailProvider
                 .setRealm(realm)
                 .setUser(user)
                 .setAttribute("firstName", user.firstName ?: "User")
+                .setAttribute("ipAddress", ipAddress ?: "Unknown")
+                .setAttribute("link", securityLink)
                 .send(
                     "passwordChangedSubject",
                     "password-changed.ftl",
-                    mapOf("firstName" to (user.firstName ?: "User")),
+                    mapOf(
+                        "firstName" to (user.firstName ?: "User"),
+                        "ipAddress" to (ipAddress ?: "Unknown"),
+                        "link" to securityLink,
+                    ),
                 )
             logger.info("Password changed notification sent to: ${user.email}")
             true
