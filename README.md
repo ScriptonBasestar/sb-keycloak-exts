@@ -39,6 +39,24 @@ Keycloak 이벤트를 다양한 메시징 시스템으로 실시간 스트리밍
 - **High Performance**: 비동기 처리, 배치 처리, 연결 풀링
 - **Production-Ready**: 완전한 에러 처리, 로깅, 테스트 커버리지
 
+### 🏢 Realm 관리 확장
+
+Keycloak Realm의 고급 관리 기능 제공:
+
+#### Realm Hierarchy Manager ✨ NEW
+- **계층 구조**: Realm 간 부모-자식 관계 설정
+- **설정 상속**: Identity Provider, Role 자동 상속
+- **자동 동기화**: 부모 Realm 변경사항 자동 전파
+- **REST API**: 계층 구조 관리용 완전한 REST API
+- **이벤트 기반**: Realm 변경 자동 감지 및 처리
+
+**사용 사례:**
+- 엔터프라이즈 SaaS (대기업 → 자회사 → 지사)
+- 멀티테넌트 플랫폼 (플랫폼 → 테넌트 → 환경)
+- 대규모 조직 (본사 → 부서 → 팀)
+
+자세한 내용은 [Realm Hierarchy 문서](realms/realm-hierarchy/README.md)를 참조하세요.
+
 ### 🎨 기업용 로그인 테마
 
 깔끔하고 모던한 기업 환경용 Keycloak 로그인 테마 제공:
@@ -101,6 +119,9 @@ Keycloak 이벤트를 다양한 메시징 시스템으로 실시간 스트리밍
    - `events/event-listener-mqtt/build/libs/keycloak-mqtt-event-listener-*-all.jar` ✨
    - `events/event-listener-aws/build/libs/keycloak-aws-event-listener-*-all.jar`
    - `events/event-listener-azure/build/libs/keycloak-azure-event-listener-*-all.jar`
+
+   **Realm Management:**
+   - `realms/realm-hierarchy/build/libs/realm-hierarchy-*-all.jar` ✨
 
    **Corporate Themes:**
    - `themes/build/libs/keycloak-theme-corporate-clean.jar` 🎨

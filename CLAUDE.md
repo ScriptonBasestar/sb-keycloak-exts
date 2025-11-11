@@ -5,7 +5,8 @@
 ### 1.1 Purpose and Type
 This is a **Keycloak extensions project** providing SPI (Service Provider Interface) implementations in Kotlin for:
 - **Identity Provider Extensions** (OAuth2 social login integrations)
-- **Event Listener Extensions** (real-time event streaming to Kafka)
+- **Event Listener Extensions** (real-time event streaming to messaging systems)
+- **Realm Management Extensions** (advanced realm hierarchy and configuration management)
 
 **Target**: Keycloak 26.0.7+ | **Language**: Kotlin 2.2.21 | **Java**: JDK 21
 
@@ -22,6 +23,10 @@ This is a **Keycloak extensions project** providing SPI (Service Provider Interf
 
 **Event Integration:**
 - Kafka Event Listener - Streams user and admin events to Kafka topics
+- RabbitMQ, NATS, Redis, MQTT, AWS, Azure - Multiple messaging system support
+
+**Realm Management:**
+- Realm Hierarchy Manager - Parent-child relationships with automatic configuration inheritance
 
 ### 1.3 Key Components
 
@@ -34,7 +39,19 @@ idps/                           # Identity Provider extensions
 └── idp-github/                # GitHub OAuth2 provider
 
 events/                         # Event Listener extensions
-└── event-listener-kafka/      # Kafka event streaming
+├── event-listener-kafka/      # Kafka event streaming
+├── event-listener-rabbitmq/   # RabbitMQ integration
+├── event-listener-nats/       # NATS integration
+├── event-listener-redis/      # Redis Pub/Sub
+├── event-listener-mqtt/       # MQTT broker integration
+├── event-listener-aws/        # AWS SNS/SQS
+└── event-listener-azure/      # Azure Service Bus/Event Grid
+
+realms/                         # Realm Management extensions
+└── realm-hierarchy/           # Realm hierarchy manager with REST API
+
+themes/                         # Keycloak UI themes
+└── corporate-clean/           # Enterprise login theme
 
 .github/workflows/              # CI/CD automation
 ├── ci.yml                      # Build, test, lint, security
@@ -56,10 +73,12 @@ events/                         # Event Listener extensions
 # Build specific provider
 ./gradlew :idps:idp-kakao:build
 ./gradlew :events:event-listener-kafka:build
+./gradlew :realms:realm-hierarchy:build
 
 # Create Shadow JAR (fat JAR for Keycloak deployment)
 ./gradlew shadowJar
 ./gradlew :idps:idp-kakao:shadowJar
+./gradlew :realms:realm-hierarchy:shadowJar
 
 # Production build with all checks
 ./gradlew clean build test shadowJar
