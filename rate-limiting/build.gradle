@@ -1,0 +1,24 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+description = 'Keycloak Rate Limiting Extensions - Protect against excessive requests'
+
+subprojects {
+    apply plugin: 'org.jetbrains.kotlin.jvm'
+
+    dependencies {
+        // Kotlin
+        implementation libs.kotlin.stdlib
+
+        // Logging
+        implementation libs.bundles.logging
+
+        // Testing
+        testImplementation libs.bundles.testing
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+}
