@@ -275,6 +275,64 @@ services:
     profiles:
       - logging
 
+  # InfluxDB (time-series database for metering)
+  influxdb:
+    image: influxdb:1.8-alpine
+    container_name: keycloak-influxdb
+    environment:
+      INFLUXDB_DB: keycloak_metrics
+      INFLUXDB_HTTP_AUTH_ENABLED: "false"
+      INFLUXDB_ADMIN_USER: admin
+      INFLUXDB_ADMIN_PASSWORD: adminpass
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+    ports:
+      - "8086:8086"
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    profiles:
+      - metering
+      - monitoring
+    healthcheck:
+      test: ["CMD", "influx", "-execute", "SHOW DATABASES"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Metering Service (usage analytics)
+  metering-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.metering
+    container_name: keycloak-metering-service
+    depends_on:
+      kafka:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_EVENT_TOPIC: keycloak.events
+      KAFKA_ADMIN_EVENT_TOPIC: keycloak.admin.events
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_DATABASE: keycloak_metrics
+      PROMETHEUS_PORT: 9091
+      METERING_STORAGE_TYPE: influxdb
+    ports:
+      - "9091:9091"
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    profiles:
+      - metering
+      - monitoring
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   postgres_data:
     driver: local
@@ -291,6 +349,8 @@ volumes:
   grafana_data:
     driver: local
   elasticsearch_data:
+    driver: local
+  influxdb_data:
     driver: local
 
 networks:
