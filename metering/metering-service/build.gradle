@@ -1,0 +1,68 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'application'
+}
+
+description = 'Keycloak Metering Service - Usage metrics collection and analytics from Kafka events'
+
+application {
+    mainClass = 'org.scriptonbasestar.kcexts.metering.MeteringApplicationKt'
+}
+
+dependencies {
+    // Event models from event-listener-common
+    implementation project(':events:event-listener-common')
+
+    // Kafka Consumer
+    implementation libs.kafka.clients
+
+    // Time-series database clients (choose one or both)
+    implementation 'org.influxdb:influxdb-java:2.24'
+    // implementation 'org.postgresql:postgresql:42.7.3'  // For TimescaleDB
+
+    // Metrics and Monitoring (SimpleCient Prometheus - simpler, no Micrometer complexity)
+    implementation 'io.prometheus:simpleclient:0.16.0'
+    implementation 'io.prometheus:simpleclient_httpserver:0.16.0'
+    implementation 'io.prometheus:simpleclient_hotspot:0.16.0'
+
+    // Configuration
+    implementation 'com.typesafe:config:1.4.3'
+
+    // Coroutines for async processing
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1'
+
+    // Logging (reuse from parent)
+    implementation libs.bundles.logging
+    implementation libs.bundles.jackson
+
+    // Test dependencies
+    testImplementation libs.bundles.testing
+    testImplementation libs.testcontainers.kafka
+    testImplementation libs.testcontainers.junit
+    testImplementation 'org.testcontainers:influxdb:1.19.8'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// Shadow JAR for standalone deployment
+apply plugin: 'com.gradleup.shadow'
+
+shadowJar {
+    archiveClassifier.set('all')
+    archiveBaseName.set('keycloak-metering-service')
+
+    mergeServiceFiles()
+
+    manifest {
+        attributes(
+            'Implementation-Title': 'Keycloak Metering Service',
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'ScriptonBaseStar',
+            'Main-Class': 'org.scriptonbasestar.kcexts.metering.MeteringApplicationKt',
+            'Built-By': System.getProperty('user.name'),
+            'Build-Date': new Date().format('yyyy-MM-dd HH:mm:ss')
+        )
+    }
+}

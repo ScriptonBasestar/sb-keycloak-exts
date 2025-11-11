@@ -1,0 +1,14 @@
+// Metering module shared configuration
+subprojects {
+    dependencies {
+        // Shared dependencies for metering modules
+        implementation libs.kotlin.stdlib
+        implementation libs.bundles.logging
+
+        // JSON processing
+        implementation libs.bundles.jackson
+
+        // Testing
+        testImplementation libs.bundles.testing
+    }
+}
