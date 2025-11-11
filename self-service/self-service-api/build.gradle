@@ -17,7 +17,8 @@ dependencies {
 
     // Test-specific
     testImplementation libs.kotlin.test
-    testRuntimeOnly 'com.h2database:h2'  // In-memory DB for tests
+    testImplementation libs.bundles.testing  // Mockito + JUnit (consistent with event listeners)
+    testImplementation 'org.jboss.resteasy:resteasy-core:6.2.7.Final'  // JAX-RS implementation for tests
 }
 
 shadowJar {
@@ -27,3 +28,34 @@ shadowJar {
 test {
     useJUnitPlatform()
 }
+
+// Integration Tests (Future - Phase 2)
+// Uncomment when TestContainers-based integration tests are added
+/*
+sourceSets {
+    integrationTest {
+        kotlin {
+            srcDir 'src/integrationTest/kotlin'
+        }
+        resources {
+            srcDir 'src/integrationTest/resources'
+        }
+        compileClasspath += sourceSets.main.output + sourceSets.test.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.test.output
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs integration tests with TestContainers'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    shouldRunAfter test
+    useJUnitPlatform()
+}
+*/

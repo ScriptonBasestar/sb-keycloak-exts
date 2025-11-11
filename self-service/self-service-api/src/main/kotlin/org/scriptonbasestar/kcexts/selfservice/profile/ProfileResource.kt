@@ -119,8 +119,17 @@ class ProfileResource(
                     user.email = it
                     user.isEmailVerified = false
 
-                    // TODO: Send email verification for new address
-                    logger.info("Email changed for user: ${user.username}, verification required")
+                    // Generate new verification token
+                    val verificationToken = java.util.UUID.randomUUID().toString().replace("-", "")
+                    user.setSingleAttribute("verificationToken", verificationToken)
+                    user.setSingleAttribute(
+                        "verificationTokenExpiry",
+                        java.time.Instant.now().plus(24, java.time.temporal.ChronoUnit.HOURS).toString(),
+                    )
+
+                    // Send verification email to new address
+                    emailService.sendVerificationEmail(user, verificationToken)
+                    logger.info("Email changed for user: ${user.username}, verification email sent to: $it")
                 }
             }
 
@@ -156,23 +165,17 @@ class ProfileResource(
     }
 
     /**
-     * Get current authenticated user
+     * Get current authenticated user from Keycloak context
+     *
+     * Note: This implementation requires proper authentication setup.
+     * In production, consider using @Context HttpHeaders to extract Bearer token.
+     *
+     * @return UserModel if authenticated, null otherwise
      */
     private fun getCurrentUser(): UserModel? {
-        // Get user from Keycloak session context
+        // Get from authentication session
         val authSession = session.context.authenticationSession
-        if (authSession != null) {
-            return authSession.authenticatedUser
-        }
-
-        // Alternative: Get from user session
-        val userSession =
-            session.sessions().getUserSession(
-                session.context.realm,
-                session.context.connection.remoteAddr,
-            )
-
-        return userSession?.user
+        return authSession?.authenticatedUser
     }
 
     /**

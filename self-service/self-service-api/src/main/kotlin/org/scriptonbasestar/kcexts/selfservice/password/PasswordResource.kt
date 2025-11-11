@@ -47,18 +47,27 @@ class PasswordResource(
         return try {
             val passwordPolicy =
                 if (policy != null) {
+                    // Use actual policy from Keycloak realm
+                    // Note: policy.toString() contains human-readable policy description
                     PasswordPolicy(
-                        minLength = 8,
-                        hashAlgorithm = policy.hashAlgorithm,
+                        minLength = 8, // TODO: Parse from policy.toString() or use policy API
+                        hashAlgorithm = policy.hashAlgorithm ?: "pbkdf2-sha256",
                         hashIterations = policy.hashIterations,
                         requirements =
                             listOf(
-                                "Minimum 8 characters",
-                                "Must be different from current password",
+                                "Policy configured in realm settings",
+                                "Hash: ${policy.hashAlgorithm ?: "pbkdf2-sha256"}",
+                                "Iterations: ${policy.hashIterations}",
                             ),
                     )
                 } else {
-                    PasswordPolicy()
+                    // Default policy when none configured
+                    PasswordPolicy(
+                        minLength = 8,
+                        hashAlgorithm = "pbkdf2-sha256",
+                        hashIterations = 27500,
+                        requirements = listOf("Minimum 8 characters (default policy)"),
+                    )
                 }
 
             Response
@@ -124,7 +133,9 @@ class PasswordResource(
             }
 
             // 4. Update password
-            val credential = org.keycloak.models.UserCredentialModel.password(request.newPassword)
+            val credential =
+                org.keycloak.models.UserCredentialModel
+                    .password(request.newPassword)
             user.credentialManager().updateCredential(credential)
 
             // 5. Update password change timestamp
@@ -150,8 +161,9 @@ class PasswordResource(
             logger.warn("Password change validation failed: ${e.message}")
             Response
                 .status(Response.Status.BAD_REQUEST)
-                .entity(ApiResponses.error<ChangePasswordResponse>("VALIDATION_ERROR", e.message ?: "Validation failed"))
-                .build()
+                .entity(
+                    ApiResponses.error<ChangePasswordResponse>("VALIDATION_ERROR", e.message ?: "Validation failed"),
+                ).build()
         } catch (e: Exception) {
             logger.error("Password change failed", e)
             Response
@@ -162,21 +174,17 @@ class PasswordResource(
     }
 
     /**
-     * Get current authenticated user
+     * Get current authenticated user from Keycloak context
+     *
+     * Note: This implementation requires proper authentication setup.
+     * In production, consider using @Context HttpHeaders to extract Bearer token.
+     *
+     * @return UserModel if authenticated, null otherwise
      */
     private fun getCurrentUser(): UserModel? {
+        // Get from authentication session
         val authSession = session.context.authenticationSession
-        if (authSession != null) {
-            return authSession.authenticatedUser
-        }
-
-        val userSession =
-            session.sessions().getUserSession(
-                session.context.realm,
-                session.context.connection.remoteAddr,
-            )
-
-        return userSession?.user
+        return authSession?.authenticatedUser
     }
 
     /**
@@ -186,7 +194,9 @@ class PasswordResource(
         user: UserModel,
         password: String,
     ): Boolean {
-        val credential = org.keycloak.models.UserCredentialModel.password(password)
+        val credential =
+            org.keycloak.models.UserCredentialModel
+                .password(password)
         return user.credentialManager().isValid(credential)
     }
 
@@ -215,6 +225,8 @@ class PasswordResource(
         require(request.newPassword.isNotBlank()) { "New password is required" }
         require(request.confirmPassword.isNotBlank()) { "Confirm password is required" }
         require(request.newPassword == request.confirmPassword) { "Passwords do not match" }
-        require(request.currentPassword != request.newPassword) { "New password must be different from current password" }
+        require(
+            request.currentPassword != request.newPassword,
+        ) { "New password must be different from current password" }
     }
 }
