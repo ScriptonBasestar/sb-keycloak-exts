@@ -7,7 +7,7 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.jboss.logging.Logger
 import org.scriptonbasestar.kcexts.events.common.connection.ConnectionException
 import org.scriptonbasestar.kcexts.events.common.connection.EventConnectionManager
-import java.util.*
+import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**

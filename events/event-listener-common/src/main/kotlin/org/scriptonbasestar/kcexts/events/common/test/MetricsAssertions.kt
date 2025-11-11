@@ -1,6 +1,7 @@
 package org.scriptonbasestar.kcexts.events.common.test
 
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 
 /**
  * Common assertions for event metrics testing.

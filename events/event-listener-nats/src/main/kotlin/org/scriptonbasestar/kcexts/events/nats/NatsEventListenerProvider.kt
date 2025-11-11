@@ -17,7 +17,7 @@ import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreakerOpenEx
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryExhaustedException
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryPolicy
 import org.scriptonbasestar.kcexts.events.nats.metrics.NatsEventMetrics
-import java.util.*
+import java.util.UUID
 
 class NatsEventListenerProvider(
     private val session: KeycloakSession,

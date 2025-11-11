@@ -18,7 +18,7 @@ import org.scriptonbasestar.kcexts.events.common.resilience.RetryExhaustedExcept
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryPolicy
 import org.scriptonbasestar.kcexts.events.redis.config.RedisEventListenerConfig
 import org.scriptonbasestar.kcexts.events.redis.metrics.RedisEventMetrics
-import java.util.*
+import java.util.UUID
 
 /**
  * Redis Streams Event Listener Provider

@@ -17,7 +17,7 @@ import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreakerOpenEx
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryExhaustedException
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryPolicy
 import org.scriptonbasestar.kcexts.events.kafka.metrics.KafkaEventMetrics
-import java.util.*
+import java.util.UUID
 
 class KafkaEventListenerProvider(
     private val session: KeycloakSession,

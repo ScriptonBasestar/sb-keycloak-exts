@@ -18,7 +18,7 @@ import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreaker
 import org.scriptonbasestar.kcexts.events.common.resilience.CircuitBreakerOpenException
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryExhaustedException
 import org.scriptonbasestar.kcexts.events.common.resilience.RetryPolicy
-import java.util.*
+import java.util.UUID
 
 /**
  * AWS SQS/SNS Event Listener Provider
