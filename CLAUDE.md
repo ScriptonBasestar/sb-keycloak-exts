@@ -260,7 +260,58 @@ src/main/resources/META-INF/services/
 └── org.keycloak.events.EventListenerProviderFactory  # SPI registration
 ```
 
-### 3.4 Key Design Patterns
+### 3.4 Realm Hierarchy Architecture
+
+Hierarchical realm management with configuration inheritance:
+
+```
+Keycloak Admin API
+  ↓
+RealmHierarchyResource (REST API)
+  ├── RealmHierarchyStorage (Realm Attributes based persistence)
+  └── InheritanceManager (inheritance logic)
+
+Keycloak Event System
+  ↓
+RealmHierarchyEventListener
+  ├── RealmHierarchyStorage
+  └── InheritanceManager → Propagate changes to child realms
+```
+
+**Key Components:**
+
+```
+src/main/kotlin/org/scriptonbasestar/kcexts/realm/hierarchy/
+├── RealmHierarchyEventListener.kt          # Event-driven synchronization
+├── RealmHierarchyEventListenerFactory.kt   # Factory (SPI entry point)
+├── model/
+│   └── RealmHierarchyNode.kt               # Hierarchy metadata model
+├── storage/
+│   └── RealmHierarchyStorage.kt            # Realm Attributes CRUD
+├── inheritance/
+│   └── InheritanceManager.kt               # Inheritance logic (IdP, Role)
+└── api/
+    ├── RealmHierarchyResource.kt           # REST API endpoints
+    ├── RealmHierarchyResourceProvider.kt   # Resource provider
+    ├── RealmHierarchyResourceProviderFactory.kt  # Factory
+    └── dto/                                 # Request/Response models
+
+src/main/resources/META-INF/services/
+├── org.keycloak.events.EventListenerProviderFactory        # Event listener SPI
+└── org.keycloak.services.resource.RealmResourceProviderFactory  # REST API SPI
+```
+
+**Inheritance Features:**
+- Identity Providers: Clone from parent with metadata tracking
+- Realm Roles: Inherit with `hierarchy.inherited` attribute
+- Authentication Flows: Planned for future release
+
+**Storage Strategy:**
+- Realm Attributes: JSON serialization, no DB schema changes
+- Circular Reference Prevention: Detects A → B → A patterns
+- Max Depth: 10 levels
+
+### 3.5 Key Design Patterns
 
 **1. SPI (Service Provider Interface)**
 - Keycloak discovers and loads extensions via `META-INF/services/`
