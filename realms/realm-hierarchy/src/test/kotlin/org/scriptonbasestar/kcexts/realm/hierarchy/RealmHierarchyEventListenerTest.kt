@@ -30,12 +30,12 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 /**
- * Integration tests for RealmHierarchyEventListener
+ * Unit tests for RealmHierarchyEventListener
  *
  * 이 테스트는 Event Listener의 동기화 동작을 검증합니다.
  */
-@DisplayName("Realm Hierarchy Event Listener Integration Tests")
-class RealmHierarchyEventListenerIntegrationTest {
+@DisplayName("Realm Hierarchy Event Listener Unit Tests")
+class RealmHierarchyEventListenerTest {
     private lateinit var session: KeycloakSession
     private lateinit var realm: RealmModel
     private lateinit var listener: RealmHierarchyEventListener
