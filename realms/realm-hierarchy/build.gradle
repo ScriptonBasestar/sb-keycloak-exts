@@ -1,0 +1,17 @@
+dependencies {
+    // Additional dependencies specific to realm hierarchy
+    // (Currently uses parent configuration from realms/build.gradle)
+}
+
+shadowJar {
+    archiveBaseName.set('realm-hierarchy')
+    archiveClassifier.set('all')
+
+    manifest {
+        attributes(
+            'Implementation-Title': 'Keycloak Realm Hierarchy Manager',
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'ScriptonBasestar'
+        )
+    }
+}

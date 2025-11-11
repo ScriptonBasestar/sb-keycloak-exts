@@ -1,0 +1,77 @@
+apply plugin: 'base'
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'groovy'
+    apply plugin: 'net.nemerosa.versioning'
+    apply plugin: 'com.gradleup.shadow'
+    apply plugin: 'org.jlleitschuh.gradle.ktlint'
+    // NOTE: Detekt temporarily disabled due to Kotlin 2.2.21 incompatibility
+    // apply plugin: 'io.gitlab.arturbosch.detekt'
+
+    // Make assemble task build Shadow JAR
+    tasks.named('assemble') {
+        dependsOn tasks.named('shadowJar')
+    }
+
+    dependencies {
+        // Keycloak Dependencies
+        compileOnly libs.keycloak.services
+        compileOnly libs.keycloak.server.spi
+        compileOnly libs.keycloak.server.spi.private
+        compileOnly libs.keycloak.core
+        compileOnly libs.keycloak.common
+
+        // Implementation Dependencies
+        implementation libs.bundles.jackson
+        implementation libs.bundles.logging
+
+        configurations.implementation.extendsFrom(configurations.bundleLib)
+
+        // Test Dependencies
+        testImplementation libs.bundles.testing
+        testImplementation libs.bundles.keycloak
+        testImplementation libs.bundles.jackson
+        testImplementation 'org.jboss.logging:jboss-logging:3.5.0.Final'
+    }
+
+    test {
+        useJUnitPlatform()
+        testLogging {
+            events "passed", "skipped", "failed"
+            exceptionFormat "full"
+            showStandardStreams = false
+        }
+        systemProperty 'junit.jupiter.execution.parallel.enabled', 'true'
+        systemProperty 'junit.jupiter.execution.parallel.mode.default', 'concurrent'
+    }
+
+    ktlint {
+        debug = false
+        verbose = false
+        android = false
+        outputToConsole = true
+        ignoreFailures = true
+        enableExperimentalRules = true
+        filter {
+            exclude("**/generated/**")
+            include("**/kotlin/**")
+        }
+    }
+
+    // Detekt configuration (currently disabled)
+    // detekt {
+    //     buildUponDefaultConfig = true
+    //     allRules = false
+    //     config = files("$rootDir/config/detekt/detekt.yml")
+    //     source = files("src/main/kotlin", "src/test/kotlin")
+    //     ignoreFailures = true
+    //     reports {
+    //         html.enabled = true
+    //         xml.enabled = true
+    //         txt.enabled = true
+    //     }
+    // }
+
+    apply from: rootProject.file("gradle/publish.gradle")
+}
