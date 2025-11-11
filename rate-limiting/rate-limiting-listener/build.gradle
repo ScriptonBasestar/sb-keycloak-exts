@@ -38,9 +38,47 @@ dependencies {
     testImplementation 'redis.clients:jedis:5.2.0' // For testing
 }
 
+// Configure source sets for integration tests
+sourceSets {
+    integrationTest {
+        kotlin {
+            srcDir 'src/integrationTest/kotlin'
+        }
+        resources {
+            srcDir 'src/integrationTest/resources'
+        }
+        compileClasspath += sourceSets.main.output + sourceSets.test.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.test.output
+    }
+}
+
+// Configure dependencies for integration tests
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
 test {
     useJUnitPlatform()
 }
+
+// Integration test task
+task integrationTest(type: Test) {
+    description = 'Runs integration tests with TestContainers'
+    group = 'verification'
+
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    useJUnitPlatform()
+
+    shouldRunAfter test
+
+    // Increase timeout for container startup
+    systemProperty 'junit.jupiter.execution.timeout.default', '5m'
+}
+
+check.dependsOn integrationTest
 
 // Shadow JAR for Keycloak deployment
 shadowJar {

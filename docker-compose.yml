@@ -333,6 +333,27 @@ services:
       timeout: 10s
       retries: 3
 
+  # Redis (distributed cache for rate limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: keycloak-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redispass}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - keycloak-network
+    restart: unless-stopped
+    profiles:
+      - ratelimit
+      - dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   postgres_data:
     driver: local
@@ -351,6 +372,8 @@ volumes:
   elasticsearch_data:
     driver: local
   influxdb_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:

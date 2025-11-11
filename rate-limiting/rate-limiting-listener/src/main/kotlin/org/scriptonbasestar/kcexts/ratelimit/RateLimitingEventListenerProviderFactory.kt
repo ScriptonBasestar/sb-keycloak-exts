@@ -87,10 +87,16 @@ class RateLimitingEventListenerProviderFactory : EventListenerProviderFactory {
             }
 
             StorageType.REDIS -> {
-                logger.warn("Redis storage not yet implemented, falling back to in-memory")
-                // TODO: Implement RedisStorage
-                // RedisStorage(config.redisConfig!!)
-                InMemoryStorage()
+                if (config.redisConfig == null) {
+                    logger.warn("Redis configuration missing, falling back to in-memory")
+                    InMemoryStorage()
+                } else {
+                    logger.info(
+                        "Using Redis storage for rate limiting: ${config.redisConfig.host}:${config.redisConfig.port}",
+                    )
+                    org.scriptonbasestar.kcexts.ratelimit.storage
+                        .RedisStorage(config.redisConfig)
+                }
             }
         }
 

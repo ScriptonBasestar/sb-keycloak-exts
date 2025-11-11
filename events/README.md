@@ -1,4 +1,4 @@
-# Keycloak Event Extensions
+# Keycloak Event Sender Extensions
 
 Keycloak에서 발생하는 사용자/관리자 이벤트를 다양한 메시징 시스템으로 전송하는 확장 모듈입니다.
 
