@@ -5,10 +5,10 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
-import org.slf4j.LoggerFactory
 import org.scriptonbasestar.kcexts.events.common.model.KeycloakEvent
 import org.scriptonbasestar.kcexts.metering.config.KafkaConfig
 import org.scriptonbasestar.kcexts.metering.processor.EventProcessor
+import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
@@ -35,7 +35,9 @@ class KafkaEventConsumer(
 
             consumerThread =
                 Thread({
-                    logger.info("Kafka consumer started, listening to topics: ${config.eventTopic}, ${config.adminEventTopic}")
+                    logger.info(
+                        "Kafka consumer started, listening to topics: ${config.eventTopic}, ${config.adminEventTopic}",
+                    )
                     consumeEvents()
                 }, "kafka-consumer-thread")
 
@@ -78,7 +80,10 @@ class KafkaEventConsumer(
                             processor.processUserEvent(event)
                         }
                     } catch (e: Exception) {
-                        logger.error("Failed to process event from topic ${record.topic()}, offset ${record.offset()}", e)
+                        logger.error(
+                            "Failed to process event from topic ${record.topic()}, offset ${record.offset()}",
+                            e,
+                        )
                         // Continue processing other events
                     }
                 }

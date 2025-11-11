@@ -30,9 +30,7 @@ class RealmHierarchyResourceProviderFactory : RealmResourceProviderFactory {
         const val PROVIDER_ID = "hierarchy"
     }
 
-    override fun create(session: KeycloakSession): RealmResourceProvider {
-        return RealmHierarchyResourceProvider(session)
-    }
+    override fun create(session: KeycloakSession): RealmResourceProvider = RealmHierarchyResourceProvider(session)
 
     override fun init(config: Config.Scope) {
         // No initialization needed

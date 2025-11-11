@@ -4,9 +4,9 @@ import org.influxdb.InfluxDB
 import org.influxdb.InfluxDBFactory
 import org.influxdb.dto.BatchPoints
 import org.influxdb.dto.Point
-import org.slf4j.LoggerFactory
 import org.scriptonbasestar.kcexts.metering.config.InfluxDBConfig
 import org.scriptonbasestar.kcexts.metering.model.UserEventMetric
+import org.slf4j.LoggerFactory
 import java.util.concurrent.TimeUnit
 
 /**

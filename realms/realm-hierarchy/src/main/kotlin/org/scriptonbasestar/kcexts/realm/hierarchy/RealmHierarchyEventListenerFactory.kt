@@ -30,9 +30,7 @@ class RealmHierarchyEventListenerFactory : EventListenerProviderFactory {
         const val PROVIDER_ID = "realm-hierarchy"
     }
 
-    override fun create(session: KeycloakSession): EventListenerProvider {
-        return RealmHierarchyEventListener(session)
-    }
+    override fun create(session: KeycloakSession): EventListenerProvider = RealmHierarchyEventListener(session)
 
     override fun init(config: Config.Scope) {
         // No initialization needed

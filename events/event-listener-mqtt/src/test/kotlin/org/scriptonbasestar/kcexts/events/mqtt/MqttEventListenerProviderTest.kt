@@ -138,7 +138,9 @@ class MqttEventListenerProviderTest {
     @Test
     fun `should handle user event errors gracefully`() {
         val event = KeycloakEventTestFixtures.createUserEvent()
-        whenever(connectionManager.publish(any(), any(), any(), any())).thenThrow(RuntimeException("MQTT connection failed"))
+        whenever(
+            connectionManager.publish(any(), any(), any(), any()),
+        ).thenThrow(RuntimeException("MQTT connection failed"))
 
         assertDoesNotThrow {
             provider.onEvent(event)
@@ -174,7 +176,9 @@ class MqttEventListenerProviderTest {
     @Test
     fun `should handle admin event errors gracefully`() {
         val adminEvent = KeycloakEventTestFixtures.createAdminEvent()
-        whenever(connectionManager.publish(any(), any(), any(), any())).thenThrow(RuntimeException("MQTT connection failed"))
+        whenever(
+            connectionManager.publish(any(), any(), any(), any()),
+        ).thenThrow(RuntimeException("MQTT connection failed"))
 
         assertDoesNotThrow {
             provider.onEvent(adminEvent, includeRepresentation = false)
@@ -228,8 +232,14 @@ class MqttEventListenerProviderTest {
 
     @Test
     fun `should send to correct topic for admin events`() {
-        val adminEvent = KeycloakEventTestFixtures.createAdminEvent(realmId = "test-realm", operationType = OperationType.CREATE)
-        whenever(config.getFullAdminEventTopic("test-realm", "CREATE")).thenReturn("test/events/admin/test-realm/CREATE")
+        val adminEvent =
+            KeycloakEventTestFixtures.createAdminEvent(
+                realmId = "test-realm",
+                operationType = OperationType.CREATE,
+            )
+        whenever(
+            config.getFullAdminEventTopic("test-realm", "CREATE"),
+        ).thenReturn("test/events/admin/test-realm/CREATE")
         doNothing().whenever(connectionManager).publish(any(), any(), any(), any())
 
         provider.onEvent(adminEvent, includeRepresentation = false)
@@ -245,7 +255,9 @@ class MqttEventListenerProviderTest {
     @Test
     fun `should build topic with prefix when configured`() {
         whenever(config.topicPrefix).thenReturn("keycloak")
-        whenever(config.getFullUserEventTopic("test-realm", "LOGIN")).thenReturn("keycloak/test/events/user/test-realm/LOGIN")
+        whenever(
+            config.getFullUserEventTopic("test-realm", "LOGIN"),
+        ).thenReturn("keycloak/test/events/user/test-realm/LOGIN")
         val provider = createProvider()
         val event = KeycloakEventTestFixtures.createUserEvent(realmId = "test-realm", type = EventType.LOGIN)
 

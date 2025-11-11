@@ -30,8 +30,8 @@ class RealmHierarchyStorage(
     /**
      * Realm의 계층 구조 정보 조회
      */
-    fun getHierarchyNode(realm: RealmModel): RealmHierarchyNode {
-        return RealmHierarchyNode(
+    fun getHierarchyNode(realm: RealmModel): RealmHierarchyNode =
+        RealmHierarchyNode(
             realmId = realm.id,
             realmName = realm.name,
             parentRealmId = realm.getAttribute(RealmHierarchyNode.ATTR_PARENT_REALM_ID),
@@ -42,7 +42,6 @@ class RealmHierarchyStorage(
             inheritAuthFlow = realm.getAttribute(RealmHierarchyNode.ATTR_INHERIT_AUTH_FLOW)?.toBoolean() ?: false,
             inheritRoles = realm.getAttribute(RealmHierarchyNode.ATTR_INHERIT_ROLES)?.toBoolean() ?: false,
         )
-    }
 
     /**
      * Realm의 계층 구조 정보 저장
@@ -71,11 +70,12 @@ class RealmHierarchyStorage(
     /**
      * 자식 Realm 목록 조회
      */
-    fun getChildRealms(realm: RealmModel): List<RealmModel> {
-        return session.realms().realmsStream
+    fun getChildRealms(realm: RealmModel): List<RealmModel> =
+        session
+            .realms()
+            .realmsStream
             .filter { it.getAttribute(RealmHierarchyNode.ATTR_PARENT_REALM_ID) == realm.id }
             .toList()
-    }
 
     /**
      * 계층 구조 경로 조회 (현재 Realm부터 최상위까지)
@@ -111,17 +111,19 @@ class RealmHierarchyStorage(
         }
 
         val node = getHierarchyNode(realm)
-        val depth = if (parentRealm != null) {
-            getHierarchyNode(parentRealm).depth + 1
-        } else {
-            0
-        }
+        val depth =
+            if (parentRealm != null) {
+                getHierarchyNode(parentRealm).depth + 1
+            } else {
+                0
+            }
 
-        val path = if (parentRealm != null) {
-            "${getHierarchyNode(parentRealm).path}/${realm.name}"
-        } else {
-            "/${realm.name}"
-        }
+        val path =
+            if (parentRealm != null) {
+                "${getHierarchyNode(parentRealm).path}/${realm.name}"
+            } else {
+                "/${realm.name}"
+            }
 
         val updatedNode =
             node.copy(

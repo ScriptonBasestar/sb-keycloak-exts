@@ -1,13 +1,13 @@
 package org.scriptonbasestar.kcexts.metering
 
 import com.typesafe.config.ConfigFactory
-import org.slf4j.LoggerFactory
 import org.scriptonbasestar.kcexts.metering.config.MeteringConfig
 import org.scriptonbasestar.kcexts.metering.consumer.KafkaEventConsumer
 import org.scriptonbasestar.kcexts.metering.metrics.MetricsExporter
 import org.scriptonbasestar.kcexts.metering.processor.EventProcessor
 import org.scriptonbasestar.kcexts.metering.storage.InfluxDBStorage
 import org.scriptonbasestar.kcexts.metering.storage.StorageBackend
+import org.slf4j.LoggerFactory
 import kotlin.system.exitProcess
 
 /**
@@ -33,14 +33,15 @@ fun main() {
         val meteringConfig = MeteringConfig.fromConfig(config)
 
         // Initialize storage backend
-        val storage: StorageBackend = when (meteringConfig.storageType) {
-            "influxdb" -> InfluxDBStorage(meteringConfig.influxDB)
-            "timescaledb" -> {
-                // TODO: Implement TimescaleDB storage
-                throw UnsupportedOperationException("TimescaleDB support coming in Phase 2")
+        val storage: StorageBackend =
+            when (meteringConfig.storageType) {
+                "influxdb" -> InfluxDBStorage(meteringConfig.influxDB)
+                "timescaledb" -> {
+                    // TODO: Implement TimescaleDB storage
+                    throw UnsupportedOperationException("TimescaleDB support coming in Phase 2")
+                }
+                else -> throw IllegalArgumentException("Unknown storage type: ${meteringConfig.storageType}")
             }
-            else -> throw IllegalArgumentException("Unknown storage type: ${meteringConfig.storageType}")
-        }
 
         // Initialize metrics exporter
         val metricsExporter = MetricsExporter(meteringConfig.prometheusPort)
@@ -50,10 +51,11 @@ fun main() {
         val eventProcessor = EventProcessor(storage, metricsExporter)
 
         // Initialize Kafka consumer
-        val kafkaConsumer = KafkaEventConsumer(
-            config = meteringConfig.kafka,
-            processor = eventProcessor,
-        )
+        val kafkaConsumer =
+            KafkaEventConsumer(
+                config = meteringConfig.kafka,
+                processor = eventProcessor,
+            )
 
         // Register shutdown hook
         Runtime.getRuntime().addShutdownHook(

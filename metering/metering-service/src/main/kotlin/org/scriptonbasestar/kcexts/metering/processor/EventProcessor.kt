@@ -1,10 +1,10 @@
 package org.scriptonbasestar.kcexts.metering.processor
 
-import org.slf4j.LoggerFactory
 import org.scriptonbasestar.kcexts.events.common.model.KeycloakEvent
 import org.scriptonbasestar.kcexts.metering.metrics.MetricsExporter
 import org.scriptonbasestar.kcexts.metering.model.UserEventMetric
 import org.scriptonbasestar.kcexts.metering.storage.StorageBackend
+import org.slf4j.LoggerFactory
 
 /**
  * Event processor for transforming and storing Keycloak events

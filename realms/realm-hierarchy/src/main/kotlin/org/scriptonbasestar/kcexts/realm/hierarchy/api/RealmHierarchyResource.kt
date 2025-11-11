@@ -60,8 +60,8 @@ class RealmHierarchyResource(
      * 현재 Realm의 계층 구조 정보 조회
      */
     @GET
-    fun getHierarchy(): Response {
-        return try {
+    fun getHierarchy(): Response =
+        try {
             val node = storage.getHierarchyNode(realm)
             val parent = storage.getParentRealm(realm)
             val children = storage.getChildRealms(realm)
@@ -109,7 +109,6 @@ class RealmHierarchyResource(
                     ),
                 ).build()
         }
-    }
 
     /**
      * GET /realms/{realm}/hierarchy/path
@@ -117,8 +116,8 @@ class RealmHierarchyResource(
      */
     @GET
     @Path("/path")
-    fun getHierarchyPath(): Response {
-        return try {
+    fun getHierarchyPath(): Response =
+        try {
             val path = storage.getHierarchyPath(realm)
             val responses =
                 path.map { node ->
@@ -152,7 +151,6 @@ class RealmHierarchyResource(
                     ),
                 ).build()
         }
-    }
 
     /**
      * POST /realms/{realm}/hierarchy/parent
@@ -206,12 +204,13 @@ class RealmHierarchyResource(
                 realm.name,
             )
 
-            Response.ok(
-                mapOf(
-                    "message" to "Parent realm set successfully",
-                    "parentRealmId" to request.parentRealmId,
-                ),
-            ).build()
+            Response
+                .ok(
+                    mapOf(
+                        "message" to "Parent realm set successfully",
+                        "parentRealmId" to request.parentRealmId,
+                    ),
+                ).build()
         } catch (e: IllegalArgumentException) {
             logger.warn("Invalid parent realm configuration", e)
             Response
@@ -242,8 +241,8 @@ class RealmHierarchyResource(
      */
     @PUT
     @Path("/inheritance")
-    fun updateInheritance(request: UpdateInheritanceRequest): Response {
-        return try {
+    fun updateInheritance(request: UpdateInheritanceRequest): Response =
+        try {
             val node = storage.getHierarchyNode(realm)
             val updatedNode =
                 node.copy(
@@ -262,14 +261,15 @@ class RealmHierarchyResource(
 
             logger.infof("Inheritance settings updated for realm: %s", realm.name)
 
-            Response.ok(
-                mapOf(
-                    "message" to "Inheritance settings updated successfully",
-                    "inheritIdp" to request.inheritIdp,
-                    "inheritAuthFlow" to request.inheritAuthFlow,
-                    "inheritRoles" to request.inheritRoles,
-                ),
-            ).build()
+            Response
+                .ok(
+                    mapOf(
+                        "message" to "Inheritance settings updated successfully",
+                        "inheritIdp" to request.inheritIdp,
+                        "inheritAuthFlow" to request.inheritAuthFlow,
+                        "inheritRoles" to request.inheritRoles,
+                    ),
+                ).build()
         } catch (e: Exception) {
             logger.error("Failed to update inheritance settings", e)
             Response
@@ -282,7 +282,6 @@ class RealmHierarchyResource(
                     ),
                 ).build()
         }
-    }
 
     /**
      * POST /realms/{realm}/hierarchy/synchronize
@@ -290,8 +289,8 @@ class RealmHierarchyResource(
      */
     @POST
     @Path("/synchronize")
-    fun synchronize(): Response {
-        return try {
+    fun synchronize(): Response =
+        try {
             val affectedRealms = mutableListOf<String>()
 
             fun syncRecursive(currentRealm: RealmModel) {
@@ -310,12 +309,13 @@ class RealmHierarchyResource(
 
             logger.infof("Hierarchy synchronized for realm: %s, affected: %d", realm.name, affectedRealms.size)
 
-            Response.ok(
-                SynchronizeResponse(
-                    message = "Hierarchy synchronized successfully",
-                    affectedRealms = affectedRealms,
-                ),
-            ).build()
+            Response
+                .ok(
+                    SynchronizeResponse(
+                        message = "Hierarchy synchronized successfully",
+                        affectedRealms = affectedRealms,
+                    ),
+                ).build()
         } catch (e: Exception) {
             logger.error("Failed to synchronize hierarchy", e)
             Response
@@ -328,24 +328,24 @@ class RealmHierarchyResource(
                     ),
                 ).build()
         }
-    }
 
     /**
      * DELETE /realms/{realm}/hierarchy
      * 계층 구조 삭제 (부모-자식 관계 해제)
      */
     @DELETE
-    fun removeHierarchy(): Response {
-        return try {
+    fun removeHierarchy(): Response =
+        try {
             storage.removeHierarchy(realm)
 
             logger.infof("Hierarchy removed for realm: %s", realm.name)
 
-            Response.ok(
-                mapOf(
-                    "message" to "Hierarchy removed successfully",
-                ),
-            ).build()
+            Response
+                .ok(
+                    mapOf(
+                        "message" to "Hierarchy removed successfully",
+                    ),
+                ).build()
         } catch (e: Exception) {
             logger.error("Failed to remove hierarchy", e)
             Response
@@ -358,5 +358,4 @@ class RealmHierarchyResource(
                     ),
                 ).build()
         }
-    }
 }

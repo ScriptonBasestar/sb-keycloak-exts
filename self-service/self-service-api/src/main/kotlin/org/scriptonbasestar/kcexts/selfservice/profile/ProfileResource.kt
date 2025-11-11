@@ -1,6 +1,10 @@
 package org.scriptonbasestar.kcexts.selfservice.profile
 
-import jakarta.ws.rs.*
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.Context
 import jakarta.ws.rs.core.HttpHeaders
 import jakarta.ws.rs.core.MediaType
@@ -120,11 +124,18 @@ class ProfileResource(
                     user.isEmailVerified = false
 
                     // Generate new verification token
-                    val verificationToken = java.util.UUID.randomUUID().toString().replace("-", "")
+                    val verificationToken =
+                        java.util.UUID
+                            .randomUUID()
+                            .toString()
+                            .replace("-", "")
                     user.setSingleAttribute("verificationToken", verificationToken)
                     user.setSingleAttribute(
                         "verificationTokenExpiry",
-                        java.time.Instant.now().plus(24, java.time.temporal.ChronoUnit.HOURS).toString(),
+                        java.time.Instant
+                            .now()
+                            .plus(24, java.time.temporal.ChronoUnit.HOURS)
+                            .toString(),
                     )
 
                     // Send verification email to new address

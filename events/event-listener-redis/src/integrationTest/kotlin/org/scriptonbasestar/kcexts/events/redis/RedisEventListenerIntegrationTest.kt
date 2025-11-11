@@ -56,7 +56,8 @@ class RedisEventListenerIntegrationTest : BaseIntegrationTest() {
 
         // Add to stream
         val messageId = redisContainer.addToStream(testStream, testData)
-        org.junit.jupiter.api.Assertions.assertNotNull(messageId, "Message ID should not be null")
+        org.junit.jupiter.api.Assertions
+            .assertNotNull(messageId, "Message ID should not be null")
 
         // Read from stream
         val messages = redisContainer.readFromStream(testStream, count = 1)
@@ -92,7 +93,8 @@ class RedisEventListenerIntegrationTest : BaseIntegrationTest() {
     fun `should verify Keycloak realm configuration`() {
         val realm = keycloakContainer.getAdminClient().realm(KeycloakTestContainer.TEST_REALM).toRepresentation()
 
-        org.junit.jupiter.api.Assertions.assertNotNull(realm, "Test realm should exist")
+        org.junit.jupiter.api.Assertions
+            .assertNotNull(realm, "Test realm should exist")
         assertEquals(KeycloakTestContainer.TEST_REALM, realm.realm, "Realm name should match")
 
         // Event Listener 설정 확인
@@ -148,7 +150,10 @@ class RedisEventListenerIntegrationTest : BaseIntegrationTest() {
 
         // Verify event contains expected fields (events are stored as field-value pairs in stream)
         val firstEvent = messages.last() // Get the most recent event
-        assertTrue(firstEvent.containsKey("type") || firstEvent.containsKey("eventType"), "Event should contain type field")
+        assertTrue(
+            firstEvent.containsKey("type") || firstEvent.containsKey("eventType"),
+            "Event should contain type field",
+        )
 
         logger.info("Successfully sent Keycloak event to Redis: $firstEvent")
     }

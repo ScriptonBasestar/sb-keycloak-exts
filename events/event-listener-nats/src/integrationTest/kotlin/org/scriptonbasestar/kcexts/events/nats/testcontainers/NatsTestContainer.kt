@@ -9,8 +9,7 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.utility.DockerImageName
 import java.time.Duration
 
-class NatsTestContainer :
-    GenericContainer<NatsTestContainer>(DockerImageName.parse(NATS_IMAGE)) {
+class NatsTestContainer : GenericContainer<NatsTestContainer>(DockerImageName.parse(NATS_IMAGE)) {
     private val logger = LoggerFactory.getLogger(NatsTestContainer::class.java)
 
     companion object {

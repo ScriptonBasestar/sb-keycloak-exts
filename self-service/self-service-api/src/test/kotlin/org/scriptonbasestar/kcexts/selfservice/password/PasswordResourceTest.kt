@@ -1,10 +1,14 @@
 package org.scriptonbasestar.kcexts.selfservice.password
 
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.keycloak.models.*
-import org.mockito.kotlin.*
+import org.keycloak.models.KeycloakContext
+import org.keycloak.models.KeycloakSession
+import org.keycloak.models.RealmModel
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import org.scriptonbasestar.kcexts.selfservice.test.SelfServiceTestFixtures
 
 /**

@@ -46,7 +46,10 @@ class NatsEventListenerIntegrationTest : BaseIntegrationTest() {
 
         // Create connection to verify connectivity
         val connection = natsContainer.createConnection()
-        assertTrue(connection.status == io.nats.client.Connection.Status.CONNECTED, "NATS connection should be established")
+        assertTrue(
+            connection.status == io.nats.client.Connection.Status.CONNECTED,
+            "NATS connection should be established",
+        )
 
         logger.info("NATS URL: ${natsContainer.getNatsUrl()}")
         logger.info("NATS Monitoring URL: ${natsContainer.getMonitoringUrl()}")
@@ -88,7 +91,8 @@ class NatsEventListenerIntegrationTest : BaseIntegrationTest() {
     fun `should verify NATS server info`() {
         val serverInfo = natsContainer.getServerInfo()
 
-        org.junit.jupiter.api.Assertions.assertNotNull(serverInfo, "Server info should not be null")
+        org.junit.jupiter.api.Assertions
+            .assertNotNull(serverInfo, "Server info should not be null")
         assertTrue(serverInfo.containsKey("version"), "Should have version info")
         assertTrue(serverInfo.containsKey("serverId"), "Should have server ID")
 
@@ -100,7 +104,8 @@ class NatsEventListenerIntegrationTest : BaseIntegrationTest() {
     fun `should verify Keycloak realm configuration`() {
         val realm = keycloakContainer.getAdminClient().realm(KeycloakTestContainer.TEST_REALM).toRepresentation()
 
-        org.junit.jupiter.api.Assertions.assertNotNull(realm, "Test realm should exist")
+        org.junit.jupiter.api.Assertions
+            .assertNotNull(realm, "Test realm should exist")
         assertEquals(KeycloakTestContainer.TEST_REALM, realm.realm, "Realm name should match")
 
         // Event Listener 설정 확인

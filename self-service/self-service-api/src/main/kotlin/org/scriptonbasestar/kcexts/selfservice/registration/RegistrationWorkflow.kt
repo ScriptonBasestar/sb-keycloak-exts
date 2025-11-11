@@ -6,7 +6,7 @@ import org.keycloak.models.UserModel
 import org.scriptonbasestar.kcexts.selfservice.notification.EmailNotificationService
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.util.*
+import java.util.UUID
 
 /**
  * User Registration Workflow

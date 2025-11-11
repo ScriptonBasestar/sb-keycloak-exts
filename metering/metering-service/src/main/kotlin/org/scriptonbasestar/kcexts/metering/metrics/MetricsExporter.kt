@@ -1,10 +1,9 @@
 package org.scriptonbasestar.kcexts.metering.metrics
 
 import io.prometheus.client.Counter
-import io.prometheus.client.hotspot.DefaultExports
 import io.prometheus.client.exporter.HTTPServer
+import io.prometheus.client.hotspot.DefaultExports
 import org.slf4j.LoggerFactory
-import java.net.InetSocketAddress
 
 /**
  * Prometheus metrics exporter using SimpleCient

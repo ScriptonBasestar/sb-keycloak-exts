@@ -160,16 +160,12 @@ class InheritanceManager(
     /**
      * 상속 가능한 Identity Provider인지 확인
      */
-    private fun isInheritable(idp: IdentityProviderModel): Boolean {
-        return idp.config[ATTR_INHERITED] != "false"
-    }
+    private fun isInheritable(idp: IdentityProviderModel): Boolean = idp.config[ATTR_INHERITED] != "false"
 
     /**
      * 상속된 Identity Provider인지 확인
      */
-    private fun isInherited(idp: IdentityProviderModel): Boolean {
-        return idp.config[ATTR_INHERITED] == "true"
-    }
+    private fun isInherited(idp: IdentityProviderModel): Boolean = idp.config[ATTR_INHERITED] == "true"
 
     /**
      * 전체 계층 구조에서 설정 동기화

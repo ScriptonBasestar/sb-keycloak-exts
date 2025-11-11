@@ -1,11 +1,18 @@
 package org.scriptonbasestar.kcexts.selfservice.registration
 
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import org.keycloak.models.*
-import org.mockito.kotlin.*
+import org.keycloak.models.KeycloakSession
+import org.keycloak.models.RealmModel
+import org.keycloak.models.UserModel
+import org.mockito.kotlin.any
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import org.scriptonbasestar.kcexts.selfservice.test.SelfServiceTestFixtures
 import java.time.Instant
 import java.util.stream.Stream

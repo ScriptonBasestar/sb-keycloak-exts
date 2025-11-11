@@ -171,7 +171,9 @@ class KeycloakTestContainer : GenericContainer<KeycloakTestContainer>(DockerImag
 
         val response = usersResource.create(user)
         val userId =
-            response.location.path.split("/").last()
+            response.location.path
+                .split("/")
+                .last()
 
         // Set password
         val credential =

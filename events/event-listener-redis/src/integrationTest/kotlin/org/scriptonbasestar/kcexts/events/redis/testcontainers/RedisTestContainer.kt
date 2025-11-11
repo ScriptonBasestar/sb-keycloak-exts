@@ -9,8 +9,7 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.utility.DockerImageName
 import java.time.Duration
 
-class RedisTestContainer :
-    GenericContainer<RedisTestContainer>(DockerImageName.parse(REDIS_IMAGE)) {
+class RedisTestContainer : GenericContainer<RedisTestContainer>(DockerImageName.parse(REDIS_IMAGE)) {
     private val logger = LoggerFactory.getLogger(RedisTestContainer::class.java)
 
     companion object {
@@ -61,7 +60,8 @@ class RedisTestContainer :
             try {
                 commands.xadd(USER_EVENTS_STREAM, mapOf("init" to "true"))
                 commands.xgroupCreate(
-                    io.lettuce.core.XReadArgs.StreamOffset.from(USER_EVENTS_STREAM, "0"),
+                    io.lettuce.core.XReadArgs.StreamOffset
+                        .from(USER_EVENTS_STREAM, "0"),
                     CONSUMER_GROUP,
                 )
                 logger.info("Created consumer group for $USER_EVENTS_STREAM")
@@ -72,7 +72,8 @@ class RedisTestContainer :
             try {
                 commands.xadd(ADMIN_EVENTS_STREAM, mapOf("init" to "true"))
                 commands.xgroupCreate(
-                    io.lettuce.core.XReadArgs.StreamOffset.from(ADMIN_EVENTS_STREAM, "0"),
+                    io.lettuce.core.XReadArgs.StreamOffset
+                        .from(ADMIN_EVENTS_STREAM, "0"),
                     CONSUMER_GROUP,
                 )
                 logger.info("Created consumer group for $ADMIN_EVENTS_STREAM")
@@ -126,8 +127,10 @@ class RedisTestContainer :
             val streamMessages =
                 commands.xrange(
                     streamKey,
-                    io.lettuce.core.Range.unbounded(),
-                    io.lettuce.core.Limit.from(count),
+                    io.lettuce.core.Range
+                        .unbounded(),
+                    io.lettuce.core.Limit
+                        .from(count),
                 )
 
             streamMessages.forEach { message ->

@@ -97,10 +97,12 @@ class RabbitMQEventListenerIntegrationTest : BaseIntegrationTest() {
 
             // Verify queues exist
             val userQueueInfo = channel.queueDeclarePassive(RabbitMQTestContainer.USER_EVENTS_QUEUE)
-            org.junit.jupiter.api.Assertions.assertNotNull(userQueueInfo, "User events queue should exist")
+            org.junit.jupiter.api.Assertions
+                .assertNotNull(userQueueInfo, "User events queue should exist")
 
             val adminQueueInfo = channel.queueDeclarePassive(RabbitMQTestContainer.ADMIN_EVENTS_QUEUE)
-            org.junit.jupiter.api.Assertions.assertNotNull(adminQueueInfo, "Admin events queue should exist")
+            org.junit.jupiter.api.Assertions
+                .assertNotNull(adminQueueInfo, "Admin events queue should exist")
 
             logger.info("RabbitMQ exchanges and queues are properly configured")
         } finally {
@@ -113,7 +115,8 @@ class RabbitMQEventListenerIntegrationTest : BaseIntegrationTest() {
     fun `should verify Keycloak realm configuration`() {
         val realm = keycloakContainer.getAdminClient().realm(KeycloakTestContainer.TEST_REALM).toRepresentation()
 
-        org.junit.jupiter.api.Assertions.assertNotNull(realm, "Test realm should exist")
+        org.junit.jupiter.api.Assertions
+            .assertNotNull(realm, "Test realm should exist")
         assertEquals(KeycloakTestContainer.TEST_REALM, realm.realm, "Realm name should match")
 
         // Event Listener 설정 확인
