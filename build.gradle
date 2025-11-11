@@ -24,6 +24,18 @@ allprojects {
     group = 'org.scriptonbasestar.keycloak.exts'
     version = '0.0.2-SNAPSHOT'
 
+    ext {
+        projectName = 'ScriptOn Keycloak Extensions'
+        projectDescription = 'Keycloak SPI implementations for Korean social login providers and event listeners'
+        projectUrl = 'https://github.com/ScriptonBasestar/sb-keycloak-exts'
+        licenseName = 'Apache License 2.0'
+        licenseUrl = 'https://www.apache.org/licenses/LICENSE-2.0'
+        developerName = 'ScriptonBasestar'
+        developerEmail = 'scriptonbasestar@gmail.com'
+        scmConnection = 'scm:git:git://github.com/ScriptonBasestar/sb-keycloak-exts.git'
+        scmUrl = 'https://github.com/ScriptonBasestar/sb-keycloak-exts'
+    }
+
     repositories {
         mavenCentral()
         google()
