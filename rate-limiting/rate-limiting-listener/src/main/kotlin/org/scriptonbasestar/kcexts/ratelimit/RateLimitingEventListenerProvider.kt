@@ -10,6 +10,7 @@ import org.scriptonbasestar.kcexts.ratelimit.config.RateLimitConfig
 import org.scriptonbasestar.kcexts.ratelimit.config.RateLimitStrategy
 import org.scriptonbasestar.kcexts.ratelimit.exception.RateLimitExceededException
 import org.scriptonbasestar.kcexts.ratelimit.limiter.RateLimiter
+import org.scriptonbasestar.kcexts.ratelimit.metrics.RateLimitMetrics
 
 /**
  * Keycloak Event Listener for Rate Limiting
@@ -33,11 +34,26 @@ class RateLimitingEventListenerProvider(
         try {
             // Check rate limits based on configuration
             checkRateLimit(event)
+
+            // Record allowed event
+            RateLimitMetrics.recordEvent(
+                realm = event.realmId ?: "unknown",
+                eventType = event.type.toString(),
+                result = "allowed",
+            )
         } catch (e: RateLimitExceededException) {
             logger.warn(
                 "Rate limit exceeded: type=${event.type}, user=${event.userId}, " +
                     "client=${event.clientId}, ip=${event.ipAddress}, realm=${event.realmId}",
             )
+
+            // Record denied event
+            RateLimitMetrics.recordEvent(
+                realm = event.realmId ?: "unknown",
+                eventType = event.type.toString(),
+                result = "denied",
+            )
+
             throw e
         } catch (e: Exception) {
             logger.error("Error checking rate limit", e)
@@ -89,8 +105,17 @@ class RateLimitingEventListenerProvider(
                 )
             }
 
+            // Update available permits metric
+            val available = rateLimiter.availablePermits(key) ?: 0L
+            RateLimitMetrics.updateAvailablePermits(
+                realm = event.realmId ?: "unknown",
+                strategy = config.strategy.name,
+                key = key,
+                permits = available,
+            )
+
             logger.debug(
-                "Rate limit check passed: key=$key, remaining=${rateLimiter.availablePermits(key)}",
+                "Rate limit check passed: key=$key, remaining=$available",
             )
         }
     }

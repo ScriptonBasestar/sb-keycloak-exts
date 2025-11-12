@@ -9,6 +9,7 @@ import org.keycloak.models.KeycloakSessionFactory
 import org.scriptonbasestar.kcexts.ratelimit.config.RateLimitAlgorithm
 import org.scriptonbasestar.kcexts.ratelimit.config.RateLimitConfig
 import org.scriptonbasestar.kcexts.ratelimit.config.StorageType
+import org.scriptonbasestar.kcexts.ratelimit.limiter.FixedWindowRateLimiter
 import org.scriptonbasestar.kcexts.ratelimit.limiter.RateLimiter
 import org.scriptonbasestar.kcexts.ratelimit.limiter.SlidingWindowRateLimiter
 import org.scriptonbasestar.kcexts.ratelimit.limiter.TokenBucketRateLimiter
@@ -145,9 +146,7 @@ class RateLimitingEventListenerProviderFactory : EventListenerProviderFactory {
             }
 
             RateLimitAlgorithm.FIXED_WINDOW -> {
-                // TODO: Implement FixedWindowRateLimiter
-                logger.warn("Fixed window algorithm not yet implemented, using sliding window")
-                SlidingWindowRateLimiter(
+                FixedWindowRateLimiter(
                     storage = storage,
                     windowSize = limitConfig.window,
                     maxRequests = limitConfig.maxRequests,
