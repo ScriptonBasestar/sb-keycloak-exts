@@ -2,8 +2,10 @@ package org.scriptonbasestar.kcexts.selfservice.test
 
 import org.keycloak.models.KeycloakContext
 import org.keycloak.models.KeycloakSession
+import org.keycloak.models.PasswordPolicy
 import org.keycloak.models.RealmModel
 import org.keycloak.models.UserModel
+import org.keycloak.models.UserProvider
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
