@@ -4,15 +4,19 @@ Self-service user management REST API extension for Keycloak.
 
 ## Features
 
-✅ **Implemented (MVP)**
-- User registration with email verification
-- Profile management (view/update)
-- Email notifications (verification, welcome)
+✅ **Implemented (MVP Complete - 2025-11-12)**
+- User registration with email verification ✅
+- Profile management (view/update) ✅
+- Email notifications (verification, welcome) ✅
+- Password management (view policy, change password) ✅
+- Basic consent management ✅
+- Account deletion (basic implementation) ✅
 
-🚧 **Stub Implementation** (TODO)
-- Consent management (GDPR compliance)
-- Password management
-- Account deletion (soft delete with 30-day grace period)
+🚧 **Enhanced Features (Phase 2)**
+- GDPR-compliant consent history tracking
+- Account deletion with 30-day grace period
+- Password history and policy enforcement
+- Advanced profile fields
 
 ## API Endpoints
 
@@ -257,28 +261,65 @@ self-service-api/
         └── messages/                             # i18n messages
 ```
 
+## Testing
+
+### Phase 1 Test Results ✅
+
+**Status**: All tests passing (2025-11-12)
+
+```bash
+./gradlew :self-service:self-service-api:test
+
+Results:
+- PasswordResourceTest: 3 tests ✅
+- RegistrationWorkflowTest: 13 tests ✅
+Total: 16 tests passing
+```
+
+**Test Coverage**:
+- ✅ Registration workflow (success, validation, duplicate checks)
+- ✅ Email verification (valid, invalid, expired tokens)
+- ✅ Verification resend (success, not found, already verified)
+- ✅ Password policy retrieval
+- ✅ Password change (with authentication)
+- ✅ Test fixtures (SelfServiceTestFixtures)
+
+**Commits**:
+- `912179b` - Self-service production code build fixes
+- `5f85220` - Self-service test imports fixes
+
 ## Roadmap
 
-### Phase 1 (Current) - MVP ✅
+### Phase 1 ✅ Complete (2025-11-12)
 - [x] User registration with email verification
-- [x] Profile management
+- [x] Profile management (view/update)
 - [x] Email notifications
+- [x] Password management (policy view, change)
+- [x] Basic consent management
+- [x] Account deletion (basic)
+- [x] Unit tests (16 tests)
+- [x] Shadow JAR build (2.5MB)
 
-### Phase 2 - GDPR Compliance 🚧
+### Phase 2 - GDPR Compliance & Enhanced Features
 - [ ] Consent management (JPA Entity-based storage)
-- [ ] Consent history tracking
+- [ ] Consent history tracking with audit log
 - [ ] Account deletion workflow (30-day grace period)
 - [ ] GDPR Right to Erasure compliance
+- [ ] Profile field validation and customization
+- [ ] Integration tests (TestContainers)
 
-### Phase 3 - Security Enhancements 📋
-- [ ] Password policy enforcement
-- [ ] Password history tracking
-- [ ] Rate limiting integration
-- [ ] CAPTCHA support
+### Phase 3 - Security Enhancements
+- [ ] Password policy enforcement (configurable rules)
+- [ ] Password history tracking (prevent reuse)
+- [ ] Rate limiting integration (prevent abuse)
+- [ ] CAPTCHA support (reCAPTCHA, hCaptcha)
+- [ ] MFA enrollment management
 
-### Phase 4 - Frontend 📋
+### Phase 4 - Frontend & UX
 - [ ] React/Vue.js self-service portal
 - [ ] Keycloak Account Console theme extension
+- [ ] Mobile-responsive design
+- [ ] i18n localization (Korean, English, etc.)
 
 ## Security Considerations
 

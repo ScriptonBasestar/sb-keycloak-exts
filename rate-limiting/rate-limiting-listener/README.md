@@ -50,20 +50,23 @@ This Keycloak extension provides **real-time rate limiting** by intercepting aut
 
 ### Rate Limiting Algorithms
 
-1. **Token Bucket** (Recommended for most use cases)
+1. **Token Bucket** ✅ (Recommended for most use cases)
    - Allows burst traffic
    - Constant refill rate
    - Best for: Login flows, API calls
+   - **Status**: Production ready
 
-2. **Sliding Window** (Precise control)
+2. **Sliding Window** ✅ (Precise control)
    - No boundary issues
    - Exact request counting
    - Best for: Strict compliance, billing
+   - **Status**: Production ready
 
-3. **Fixed Window** (Simple, less accurate)
+3. **Fixed Window** ✅ (Simple, efficient) **NEW in 0.0.2**
    - Discrete time windows
    - Lower memory usage
    - Best for: High-volume, approximate limits
+   - **Status**: Production ready (2025-11-12)
 
 ### Rate Limiting Strategies
 
@@ -493,23 +496,34 @@ Time  Requests in Window  Action  Result
 65s   9                   LOGIN   ✅ (first request expired)
 ```
 
-### Fixed Window
+### Fixed Window ✅
 
 **Best for**: High volume, approximate limits
+
+**Status**: Production ready (2025-11-12)
 
 **How it works**:
 1. Divide time into discrete windows (e.g., 1-minute buckets)
 2. Count requests in current window
 3. Reset count at window boundary
+4. Window index = `currentTime / windowSize`
 
 **Advantages**:
-- ✅ Very low memory usage
+- ✅ Very low memory usage (single counter)
 - ✅ Simple implementation
-- ✅ High performance
+- ✅ High performance (constant-time operations)
+- ✅ Ideal for high-throughput scenarios
 
 **Disadvantages**:
 - ❌ Boundary issue: 2x limit possible at window edge
-- ❌ Less fair
+- ❌ Less fair than sliding window
+
+**Configuration**:
+```properties
+ratelimit.algorithm=FIXED_WINDOW
+ratelimit.limits.{EVENT_TYPE}.windowSize=60s
+ratelimit.limits.{EVENT_TYPE}.maxRequests=10
+```
 
 **Example Boundary Issue**:
 ```
@@ -517,6 +531,11 @@ Window 1 (0-60s): 10 requests at 59s ✅
 Window 2 (60-120s): 10 requests at 60s ✅
 Total: 20 requests in 1 second! ⚠️
 ```
+
+**Implementation Details**:
+- Counter key: `ratelimit:fixed:{key}:window:{windowIndex}`
+- Automatic TTL: Counter expires after window duration
+- Storage: Single counter per key per window
 
 ---
 
@@ -588,21 +607,24 @@ Counters:
 
 ## Monitoring
 
-### Metrics (Prometheus)
+### Metrics (Prometheus) ✅ NEW in 0.0.2
 
-If Keycloak metrics are enabled (`KC_METRICS_ENABLED=true`), this extension exports:
+This extension includes **built-in Prometheus metrics** via `RateLimitMetrics`:
 
 ```
-# Total events processed
+# Total events processed (counters)
 keycloak_ratelimit_events_total{realm="master", event_type="LOGIN", result="allowed"}
 keycloak_ratelimit_events_total{realm="master", event_type="LOGIN", result="denied"}
 
-# Denial rate
+# Denial rate (PromQL query)
 rate(keycloak_ratelimit_events_total{result="denied"}[5m])
 
-# Available permits (sampled)
+# Available permits (gauge - sampled per request)
 keycloak_ratelimit_permits_available{realm="master", strategy="PER_USER", key="alice"}
 ```
+
+**Status**: Metrics collection implemented (2025-11-12)
+**Integration**: Automatic when Keycloak metrics enabled (`KC_METRICS_ENABLED=true`)
 
 ### Logs
 
@@ -1035,14 +1057,33 @@ Apache License 2.0 - see [LICENSE](../../LICENSE) file
 
 ## Changelog
 
-See [CHANGELOG.md](../../CHANGELOG.md) for version history.
+### Version 0.0.2 (2025-11-12) ✅
+
+**New Features**:
+- ✅ **Fixed Window algorithm** implementation
+- ✅ **Prometheus metrics** integration (`RateLimitMetrics`)
+- ✅ **CDI beans.xml** for Quarkus compatibility
+
+**Testing**:
+- ✅ 20 tests total (all passing)
+  - FixedWindowRateLimiterTest: 8 tests
+  - RateLimitMetricsTest: 12 tests
+  - Existing algorithm tests
+
+**Commits**:
+- `629d1e2` - Rate limiting module completion
+
+See [CHANGELOG.md](../../CHANGELOG.md) for full version history.
 
 ## Roadmap
 
+**Phase 2** (Next Release):
+- [ ] Grafana dashboard templates
 - [ ] Auto-scaling limits based on Metering Service data
+- [ ] Rate limit reset API endpoint
+
+**Phase 3** (Future):
 - [ ] Whitelist/blacklist support
 - [ ] Per-client/per-user override configuration
-- [ ] Grafana dashboard templates
 - [ ] Distributed tracing support (OpenTelemetry)
 - [ ] Multiple Redis clusters support
-- [ ] Rate limit reset API endpoint
