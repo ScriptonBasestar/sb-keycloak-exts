@@ -10,8 +10,10 @@ import org.junit.jupiter.api.assertThrows
 import org.keycloak.models.KeycloakSession
 import org.keycloak.models.RealmModel
 import org.keycloak.models.UserModel
+import org.keycloak.models.UserProvider
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.scriptonbasestar.kcexts.selfservice.test.SelfServiceTestFixtures
@@ -55,9 +57,9 @@ class RegistrationWorkflowTest {
                 confirmPassword = "Password123!",
             )
 
-        whenever(users.getUserByUsername(any(), eq("testuser"))).thenReturn(null)
-        whenever(users.getUserByEmail(any(), eq("test@example.com"))).thenReturn(null)
-        whenever(users.addUser(any(), eq("testuser"))).thenReturn(user)
+        whenever(users.getUserByUsername(any<RealmModel>(), eq("testuser"))).thenReturn(null)
+        whenever(users.getUserByEmail(any<RealmModel>(), eq("test@example.com"))).thenReturn(null)
+        whenever(users.addUser(any<RealmModel>(), eq("testuser"))).thenReturn(user)
 
         // When
         val response = workflow.register(request)
@@ -82,7 +84,7 @@ class RegistrationWorkflowTest {
                 confirmPassword = "Password123!",
             )
 
-        whenever(users.getUserByUsername(any(), eq("existinguser"))).thenReturn(user)
+        whenever(users.getUserByUsername(any<RealmModel>(), eq("existinguser"))).thenReturn(user)
 
         // When & Then
         val exception =
@@ -106,8 +108,8 @@ class RegistrationWorkflowTest {
                 confirmPassword = "Password123!",
             )
 
-        whenever(users.getUserByUsername(any(), eq("testuser"))).thenReturn(null)
-        whenever(users.getUserByEmail(any(), eq("existing@example.com"))).thenReturn(user)
+        whenever(users.getUserByUsername(any<RealmModel>(), eq("testuser"))).thenReturn(null)
+        whenever(users.getUserByEmail(any<RealmModel>(), eq("existing@example.com"))).thenReturn(user)
 
         // When & Then
         val exception =
@@ -209,7 +211,7 @@ class RegistrationWorkflowTest {
         val expiry = Instant.now().plusSeconds(3600).toString()
 
         whenever(user.getFirstAttribute("verificationTokenExpiry")).thenReturn(expiry)
-        whenever(users.searchForUserByUserAttributeStream(any(), eq("verificationToken"), eq(token))).thenReturn(
+        whenever(users.searchForUserByUserAttributeStream(any<RealmModel>(), eq("verificationToken"), eq(token))).thenReturn(
             Stream.of(user),
         )
 
@@ -226,7 +228,7 @@ class RegistrationWorkflowTest {
         // Given
         val token = "invalid-token"
 
-        whenever(users.searchForUserByUserAttributeStream(any(), eq("verificationToken"), eq(token))).thenReturn(
+        whenever(users.searchForUserByUserAttributeStream(any<RealmModel>(), eq("verificationToken"), eq(token))).thenReturn(
             Stream.empty(),
         )
 
@@ -245,7 +247,7 @@ class RegistrationWorkflowTest {
         val expiry = Instant.now().minusSeconds(3600).toString()
 
         whenever(user.getFirstAttribute("verificationTokenExpiry")).thenReturn(expiry)
-        whenever(users.searchForUserByUserAttributeStream(any(), eq("verificationToken"), eq(token))).thenReturn(
+        whenever(users.searchForUserByUserAttributeStream(any<RealmModel>(), eq("verificationToken"), eq(token))).thenReturn(
             Stream.of(user),
         )
 
@@ -262,7 +264,7 @@ class RegistrationWorkflowTest {
         // Given
         val email = "test@example.com"
 
-        whenever(users.getUserByEmail(any(), eq(email))).thenReturn(user)
+        whenever(users.getUserByEmail(any<RealmModel>(), eq(email))).thenReturn(user)
         whenever(user.isEmailVerified).thenReturn(false)
 
         // When
@@ -277,7 +279,7 @@ class RegistrationWorkflowTest {
         // Given
         val email = "notfound@example.com"
 
-        whenever(users.getUserByEmail(any(), eq(email))).thenReturn(null)
+        whenever(users.getUserByEmail(any<RealmModel>(), eq(email))).thenReturn(null)
 
         // When & Then
         val exception =
@@ -292,7 +294,7 @@ class RegistrationWorkflowTest {
         // Given
         val email = "verified@example.com"
 
-        whenever(users.getUserByEmail(any(), eq(email))).thenReturn(user)
+        whenever(users.getUserByEmail(any<RealmModel>(), eq(email))).thenReturn(user)
         whenever(user.isEmailVerified).thenReturn(true)
 
         // When & Then
