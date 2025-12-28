@@ -223,6 +223,8 @@ src/main/resources/META-INF/services/
 └── org.keycloak.broker.social.SocialIdentityProvider  # SPI registration
 ```
 
+> **📚 Detailed Guide**: See [`idps/CLAUDE.md`](idps/CLAUDE.md) for step-by-step instructions on adding new OAuth2 providers.
+
 ### 3.3 Kafka Event Listener Architecture
 
 Real-time event streaming to Kafka with metrics and error handling:
@@ -365,6 +367,8 @@ kafka.batch.size                   # Batch size in bytes
 kafka.linger.ms                    # Batch linger time
 kafka.compression.type             # Compression type (gzip, snappy, lz4)
 ```
+
+> **📚 Detailed Guide**: See [`events/CLAUDE.md`](events/CLAUDE.md) for complete event listener architecture, resilience patterns (CircuitBreaker, RetryPolicy, DLQ), and instructions on adding new messaging systems.
 
 ### 3.6 Dependency Structure
 
